@@ -3,6 +3,8 @@
 #include "common.h"
 #include "asm.h"
 
+#include <atomic>
+#include <optional>
 #include <functional>
 
 namespace i8080
@@ -11,13 +13,15 @@ namespace i8080
 class Cpu
 {
 public:
-    Cpu(uint8_t* memory) :
-        _memory(memory)
-    {}
+    Cpu(uint8_t* memory);
 
     void run(uint16_t code_section, uint16_t stack);
+    void interrupt(Instruction instruction);
+    void interrupt(uint8_t isr_number);
 
 private:
+    static constexpr uint8_t CONDITION_MET_CYCLE_COUNT = 6;
+
     static bool _get_parity(uint16_t number);
     const Opcode& _fetch() const;
     bool _execute(const Opcode& opcode);
@@ -58,8 +62,6 @@ private:
     void _DAD(uint16_t reg);
     void _PUSH(uint16_t reg);
     void _POP(uint16_t& reg);
-    void _RST(uint8_t offset);
-
 
 #pragma pack(push, 1)
     struct Flags
@@ -79,18 +81,19 @@ private:
     };
 #pragma pack(pop)
 
+#define DEFINE_REGISTER(high, low)  \
+    union                           \
+    {                               \
+        uint16_t high ## low;       \
+        struct                      \
+        {                           \
+            uint8_t low;            \
+            uint8_t high;           \
+        };                          \
+    }
+
     struct State
     {
-        union
-        {
-            uint16_t bc;
-            struct
-            {
-                uint8_t c;
-                uint8_t b;
-            };
-        };
-
         union
         {
             uint16_t af;
@@ -101,36 +104,22 @@ private:
             };
         };
 
-        union
-        {
-            uint16_t de;
-            struct
-            {
-                uint8_t e;
-                uint8_t d;
-            };
-        };
-
-        union
-        {
-            uint16_t hl;
-            struct
-            {
-                uint8_t l;
-                uint8_t h;
-            };
-        };
+        DEFINE_REGISTER(b, c); // bc
+        DEFINE_REGISTER(d, e); // de
+        DEFINE_REGISTER(h, l); // hl
 
         uint16_t pc;
         uint16_t sp;
 
-        bool interrupts_enabled;
-        uint8_t pending_interrupt;
-    };
+        uint64_t cycle;
 
+        std::atomic_bool interrupts_enabled;
+        std::optional<Instruction> interrupt_vector;
+    };
+#undef DEFINE_REGISTER
 
     State _state;
-    uint8_t * const _memory;
+    uint8_t* const _memory;
 };
 
 }

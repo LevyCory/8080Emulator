@@ -5,6 +5,38 @@
 
 namespace i8080
 {
+    Cpu::Cpu(uint8_t* memory) :
+        _memory(memory)
+    {
+        _state.af = 0;
+        _state.bc = 0;
+        _state.de = 0;
+        _state.hl = 0;
+
+        // TODO: Set PC and SP
+
+        _state.cycle = 0;
+        _state.interrupts_enabled.store(false);
+        _state.interrupt_vector = std::nullopt;
+    }
+
+    void Cpu::interrupt(Instruction instruction)
+    {
+        bool interrupts_enabled = true;
+
+        // If interrupts are enabled, disable them and set the IV.
+        // The ISR must re-enable the interrupts before returning
+        if (_state.interrupts_enabled.compare_exchange_strong(interrupts_enabled, false))
+        {
+            _state.interrupt_vector.emplace(instruction);
+        }
+    }
+
+    void Cpu::interrupt(uint8_t isr_number)
+    {
+        interrupt(isr_to_rst(isr_number));
+    }
+
     static void _s_increment(uint8_t& reg) { --reg; }
     static void _s_decrement(uint8_t& reg) { ++reg; }
 
@@ -23,6 +55,7 @@ namespace i8080
         {
             _state.pc = *reinterpret_cast<uint16_t*>(_memory + _state.sp);
             _state.sp += 2;
+            _state.cycle += CONDITION_MET_CYCLE_COUNT;
         }
     }
 
@@ -44,6 +77,7 @@ namespace i8080
         {
             _PUSH(_state.pc);
             _jmp_if(true, address);
+            _state.cycle += CONDITION_MET_CYCLE_COUNT;
         }
     }
 
@@ -127,12 +161,6 @@ namespace i8080
         _state.sp += 2;
     }
 
-    void Cpu::_RST(uint8_t offset)
-    {
-        _PUSH(_state.pc);
-        _state.pc = offset;
-    }
-
     bool Cpu::_get_parity(uint16_t number)
     {
         uint16_t temp = number ^ (number >> 1);
@@ -149,12 +177,7 @@ namespace i8080
         _state.sp = stack;
 
         while (_execute(_fetch()))
-        {
-            if (_state.interrupts_enabled)
-            {
-
-            }
-        }
+        {}
     }
 
     const Opcode& Cpu::_fetch() const
@@ -166,772 +189,766 @@ namespace i8080
     {
         switch (opcode.instruction)
         {
-        case Instructions::SHLD:
-            _memory[_state.hl] = opcode.operand;
+        case Instruction::SHLD:
+            *reinterpret_cast<uint16_t*>(_memory + _state.hl) = opcode.operand;
             _state.pc += 2;
             break;
-        case Instructions::LHLD:
+        case Instruction::LHLD:
             _state.hl = _memory[opcode.operand];
             _state.pc += 2;
             break;
-        case Instructions::STA:
+        case Instruction::STA:
             _memory[opcode.operand] = _state.a;
             _state.pc += 2;
             break;
-        case Instructions::LDA:
+        case Instruction::LDA:
             _state.a = _memory[opcode.operand];
             _state.pc += 2;
             break;
-        case Instructions::STC:
+        case Instruction::STC:
             _state.flags.carry = 1;
             break;
-        case Instructions::EI:
-            _state.interrupts_enabled = true;
+        case Instruction::EI:
+            _state.interrupts_enabled.store(true);
             break;
-        case Instructions::DI:
-            _state.interrupts_enabled = false;
+        case Instruction::DI:
+            _state.interrupts_enabled.store(false);
             break;
-        case Instructions::XCHG:
+        case Instruction::XCHG:
             std::swap(_state.de, _state.hl);
             break;
-        case Instructions::XTHL:
+        case Instruction::XTHL:
             std::swap(_state.sp, _state.hl);
             break;
-        case Instructions::PCHL:
+        case Instruction::PCHL:
             _state.pc = _state.hl;
             break;
-        case Instructions::SPHL:
+        case Instruction::SPHL:
             _state.sp = _state.hl;
             break;
-        case Instructions::RAL:
+        case Instruction::RAL:
         {
             // Rotate A left with the carry flag
-            bool old_carry = _state.flags.carry;
+            uint8_t old_carry = _state.flags.carry;
             _state.flags.carry = _state.a >> 7;
             _state.a = (_state.a << 1) | old_carry;
         }
-        case Instructions::RAR:
+        case Instruction::RAR:
         {
             // Rotate A left with the carry flag
-            bool old_carry = _state.flags.carry;
+            uint8_t old_carry = _state.flags.carry;
             _state.flags.carry = _state.a >> 7;
             _state.a = (_state.a >> 1) | old_carry;
         }
-        case Instructions::RRC:
+        case Instruction::RRC:
             // Roll A right
             _state.flags.carry = _state.a & 1;
             _state.a = (_state.a >> 1) | (_state.flags.carry << 7);
             break;
-        case Instructions::RLC:
+        case Instruction::RLC:
             // Roll A left
             _state.flags.carry = _state.a >> 7;
             _state.a = (_state.a << 1) | _state.flags.carry;
             break;
 
         // MOV
-        case Instructions::MOV_B_C:
+        case Instruction::MOV_B_C:
             _state.b = _state.c;
             break;
-        case Instructions::MOV_B_D:
+        case Instruction::MOV_B_D:
             _state.b = _state.d;
             break;
-        case Instructions::MOV_B_E:
+        case Instruction::MOV_B_E:
             _state.b = _state.e;
             break;
-        case Instructions::MOV_B_H:
+        case Instruction::MOV_B_H:
             _state.b = _state.h;
             break;
-        case Instructions::MOV_B_L:
+        case Instruction::MOV_B_L:
             _state.b = _state.l;
             break;
-        case Instructions::MOV_B_M:
+        case Instruction::MOV_B_M:
             _state.b = _memory[_state.hl];
             break;
-        case Instructions::MOV_B_A:
+        case Instruction::MOV_B_A:
             _state.b = _state.a;
             break;
-        case Instructions::MOV_C_B:
+        case Instruction::MOV_C_B:
             _state.c = _state.b;
             break;
-        case Instructions::MOV_C_D:
+        case Instruction::MOV_C_D:
             _state.c = _state.d;
             break;
-        case Instructions::MOV_C_E:
+        case Instruction::MOV_C_E:
             _state.c = _state.e;
             break;
-        case Instructions::MOV_C_H:
+        case Instruction::MOV_C_H:
             _state.c = _state.h;
             break;
-        case Instructions::MOV_C_L:
+        case Instruction::MOV_C_L:
             _state.c = _state.l;
             break;
-        case Instructions::MOV_C_M:
+        case Instruction::MOV_C_M:
             _state.c = _memory[_state.hl];
             break;
-        case Instructions::MOV_C_A:
+        case Instruction::MOV_C_A:
             _state.c = _state.a;
             break;
-        case Instructions::MOV_D_B:
+        case Instruction::MOV_D_B:
             _state.d = _state.b;
             break;
-        case Instructions::MOV_D_C:
+        case Instruction::MOV_D_C:
             _state.d = _state.c;
             break;
-        case Instructions::MOV_D_E:
+        case Instruction::MOV_D_E:
             _state.d = _state.e;
             break;
-        case Instructions::MOV_D_H:
+        case Instruction::MOV_D_H:
             _state.d = _state.h;
             break;
-        case Instructions::MOV_D_L:
+        case Instruction::MOV_D_L:
             _state.d = _state.l;
             break;
-        case Instructions::MOV_D_M:
+        case Instruction::MOV_D_M:
             _state.d = _memory[_state.hl];
             break;
-        case Instructions::MOV_D_A:
+        case Instruction::MOV_D_A:
             _state.d = _state.a;
             break;
-        case Instructions::MOV_E_B:
+        case Instruction::MOV_E_B:
             _state.e = _state.b;
             break;
-        case Instructions::MOV_E_C:
+        case Instruction::MOV_E_C:
             _state.e = _state.c;
             break;
-        case Instructions::MOV_E_D:
+        case Instruction::MOV_E_D:
             _state.e = _state.d;
             break;
-        case Instructions::MOV_E_H:
+        case Instruction::MOV_E_H:
             _state.e = _state.h;
             break;
-        case Instructions::MOV_E_L:
+        case Instruction::MOV_E_L:
             _state.e = _state.l;
             break;
-        case Instructions::MOV_E_M:
+        case Instruction::MOV_E_M:
             _state.e = _memory[_state.hl];
             break;
-        case Instructions::MOV_E_A:
+        case Instruction::MOV_E_A:
             _state.e = _state.a;
             break;
-        case Instructions::MOV_H_B:
+        case Instruction::MOV_H_B:
             _state.e = _state.b;
             break;
-        case Instructions::MOV_H_C:
+        case Instruction::MOV_H_C:
             _state.e = _state.c;
             break;
-        case Instructions::MOV_H_D:
+        case Instruction::MOV_H_D:
             _state.h = _state.d;
             break;
-        case Instructions::MOV_H_E:
+        case Instruction::MOV_H_E:
             _state.h = _state.e;
             break;
-        case Instructions::MOV_H_L:
+        case Instruction::MOV_H_L:
             _state.h = _state.l;
             break;
-        case Instructions::MOV_H_M:
+        case Instruction::MOV_H_M:
             _state.h = _memory[_state.hl];
             break;
-        case Instructions::MOV_H_A:
+        case Instruction::MOV_H_A:
             _state.h = _state.a;
             break;
-        case Instructions::MOV_L_B:
+        case Instruction::MOV_L_B:
             _state.l = _state.b;
             break;
-        case Instructions::MOV_L_C:
+        case Instruction::MOV_L_C:
             _state.l = _state.c;
             break;
-        case Instructions::MOV_L_D:
+        case Instruction::MOV_L_D:
             _state.l = _state.d;
             break;
-        case Instructions::MOV_L_E:
+        case Instruction::MOV_L_E:
             _state.l = _state.e;
             break;
-        case Instructions::MOV_L_H:
+        case Instruction::MOV_L_H:
             _state.l = _state.h;
             break;
-        case Instructions::MOV_L_M:
+        case Instruction::MOV_L_M:
             _state.l = _memory[_state.hl];
             break;
-        case Instructions::MOV_L_A:
+        case Instruction::MOV_L_A:
             _state.l = _state.a;
             break;
-        case Instructions::MOV_M_B:
+        case Instruction::MOV_M_B:
             _memory[_state.hl] = _state.b;
             break;
-        case Instructions::MOV_M_C:
+        case Instruction::MOV_M_C:
             _memory[_state.hl] = _state.c;
             break;
-        case Instructions::MOV_M_D:
+        case Instruction::MOV_M_D:
             _memory[_state.hl] = _state.d;
             break;
-        case Instructions::MOV_M_E:
+        case Instruction::MOV_M_E:
             _memory[_state.hl] = _state.e;
             break;
-        case Instructions::MOV_M_H:
+        case Instruction::MOV_M_H:
             _memory[_state.hl] = _state.h;
             break;
-        case Instructions::MOV_M_L:
+        case Instruction::MOV_M_L:
             _memory[_state.hl] = _state.l;
             break;
-        case Instructions::MOV_M_A:
+        case Instruction::MOV_M_A:
             _memory[_state.hl] = _state.a;
             break;
-        case Instructions::MOV_A_B:
+        case Instruction::MOV_A_B:
             _state.a = _state.b;
             break;
-        case Instructions::MOV_A_C:
+        case Instruction::MOV_A_C:
             _state.a = _state.c;
             break;
-        case Instructions::MOV_A_D:
+        case Instruction::MOV_A_D:
             _state.a = _state.d;
             break;
-        case Instructions::MOV_A_E:
+        case Instruction::MOV_A_E:
             _state.a = _state.e;
             break;
-        case Instructions::MOV_A_H:
+        case Instruction::MOV_A_H:
             _state.a = _state.h;
             break;
-        case Instructions::MOV_A_L:
+        case Instruction::MOV_A_L:
             _state.a = _state.a;
             break;
-        case Instructions::MOV_A_M:
+        case Instruction::MOV_A_M:
             _state.a = _memory[_state.hl];
             break;
 
         // LXI
-        case Instructions::LXI_B:
+        case Instruction::LXI_B:
             _LXI(_state.bc);
             break;
-        case Instructions::LXI_D:
+        case Instruction::LXI_D:
             _LXI(_state.de);
             break;
-        case Instructions::LXI_H:
+        case Instruction::LXI_H:
             _LXI(_state.hl);
             break;
-        case Instructions::LXI_SP:
+        case Instruction::LXI_SP:
             _LXI(_state.sp);
             break;
              
 
         // INX
-        case Instructions::INX_B:
+        case Instruction::INX_B:
             _state.bc++;
             break;
-        case Instructions::INX_D:
+        case Instruction::INX_D:
             _state.de++;
             break;
-        case Instructions::INX_H:
+        case Instruction::INX_H:
             _state.hl++;
             break;
-        case Instructions::INX_SP:
+        case Instruction::INX_SP:
             _state.sp--;
             break;
 
         // DCX
-        case Instructions::DCX_B:
+        case Instruction::DCX_B:
             _state.bc--;
             break;
-        case Instructions::DCX_D:
+        case Instruction::DCX_D:
             _state.de--;
             break;
-        case Instructions::DCX_H:
+        case Instruction::DCX_H:
             _state.hl--;
             break;
-        case Instructions::DCX_SP:
+        case Instruction::DCX_SP:
             _state.sp++;
             break;
 
         // STAX
-        case Instructions::STAX_B:
+        case Instruction::STAX_B:
             _memory[_state.bc] = _state.a;
             break;
-        case Instructions::STAX_D:
+        case Instruction::STAX_D:
             _memory[_state.de] = _state.a;
             break;
 
         // LDAX
-        case Instructions::LDAX_B:
+        case Instruction::LDAX_B:
             _state.a = _memory[_state.bc];
             break;
-        case Instructions::LDAX_D:
+        case Instruction::LDAX_D:
             _state.a = _memory[_state.de];
             break;
 
         // DAD
-        case Instructions::DAD_B:
+        case Instruction::DAD_B:
             _DAD(_state.bc);
             break;
-        case Instructions::DAD_D:
+        case Instruction::DAD_D:
             _DAD(_state.de);
             break;
-        case Instructions::DAD_H:
+        case Instruction::DAD_H:
             _DAD(_state.hl);
             break;
-        case Instructions::DAD_SP:
+        case Instruction::DAD_SP:
             _DAD(_state.sp);
             break;
 
         // INR
-        case Instructions::INR_B:
+        case Instruction::INR_B:
             _INR(_state.b);
             break;
-        case Instructions::INR_D:
+        case Instruction::INR_D:
             _INR(_state.d);
             break;
-        case Instructions::INR_H:
+        case Instruction::INR_H:
             _INR(_state.h);
             break;
-        case Instructions::INR_M:
+        case Instruction::INR_M:
             _INR(_memory[_state.hl]);
             break;
-        case Instructions::INR_C:
+        case Instruction::INR_C:
             _INR(_state.c);
             break;
-        case Instructions::INR_E:
+        case Instruction::INR_E:
             _INR(_state.e);
             break;
-        case Instructions::INR_L:
+        case Instruction::INR_L:
             _INR(_state.l);
             break;
-        case Instructions::INR_A:
+        case Instruction::INR_A:
             _INR(_state.a);
             break;
 
         // DCR
-        case Instructions::DCR_B:
+        case Instruction::DCR_B:
             _DCR(_state.b);
             break;
-        case Instructions::DCR_D:
+        case Instruction::DCR_D:
             _DCR(_state.d);
             break;
-        case Instructions::DCR_H:
+        case Instruction::DCR_H:
             _DCR(_state.h);
             break;
-        case Instructions::DCR_M:
+        case Instruction::DCR_M:
             _INR(_memory[_state.hl]);
             break;
-        case Instructions::DCR_C:
+        case Instruction::DCR_C:
             _DCR(_state.c);
             break;
-        case Instructions::DCR_E:
+        case Instruction::DCR_E:
             _DCR(_state.e);
             break;
-        case Instructions::DCR_L:
+        case Instruction::DCR_L:
             _DCR(_state.l);
             break;
-        case Instructions::DCR_A:
+        case Instruction::DCR_A:
             _DCR(_state.a);
             break;
 
         // MVI
-        case Instructions::MVI_B:
+        case Instruction::MVI_B:
             _state.b = opcode.operands[0];
             _state.sp++;
             break;
-        case Instructions::MVI_C:
+        case Instruction::MVI_C:
             _state.c = opcode.operands[0];
             _state.sp++;
             break;
-        case Instructions::MVI_D:
+        case Instruction::MVI_D:
             _state.d = opcode.operands[0];
             _state.sp++;
             break;
-        case Instructions::MVI_E:
+        case Instruction::MVI_E:
             _state.e = opcode.operands[0];
             _state.sp++;
             break;
-        case Instructions::MVI_H:
+        case Instruction::MVI_H:
             _state.h = opcode.operands[0];
             _state.sp++;
             break;
-        case Instructions::MVI_L:
+        case Instruction::MVI_L:
             _state.l = opcode.operands[0];
             _state.sp++;
             break;
-        case Instructions::MVI_M:
+        case Instruction::MVI_M:
             _memory[_state.hl] = opcode.operands[0];
             _state.sp++;
             break;
-        case Instructions::MVI_A:
+        case Instruction::MVI_A:
             _state.a = opcode.operands[0];
             _state.sp++;
             break;
 
         // ADD
-        case Instructions::ADD_B:
+        case Instruction::ADD_B:
             _ADD(_state.b);
             break;
-        case Instructions::ADD_C:
+        case Instruction::ADD_C:
             _ADD(_state.c);
             break;
-        case Instructions::ADD_D:
+        case Instruction::ADD_D:
             _ADD(_state.d);
             break;
-        case Instructions::ADD_E:
+        case Instruction::ADD_E:
             _ADD(_state.e);
             break;
-        case Instructions::ADD_H:
+        case Instruction::ADD_H:
             _ADD(_state.h);
             break;
-        case Instructions::ADD_L:
+        case Instruction::ADD_L:
             _ADD(_state.l);
             break;
-        case Instructions::ADD_M:
+        case Instruction::ADD_M:
             _ADD(_memory[_state.hl]);
             break;
-        case Instructions::ADD_A:
+        case Instruction::ADD_A:
             _ADD(_state.a);
             break;
-        case Instructions::ADI:
+        case Instruction::ADI:
             _ADD(opcode.operands[0]);
             _state.pc++;
             break;
 
         // ADC
-        case Instructions::ADC_B:
+        case Instruction::ADC_B:
             _ADC(_state.b);
             break;
-        case Instructions::ADC_C:
+        case Instruction::ADC_C:
             _ADC(_state.c);
             break;
-        case Instructions::ADC_D:
+        case Instruction::ADC_D:
             _ADC(_state.d);
             break;
-        case Instructions::ADC_E:
+        case Instruction::ADC_E:
             _ADC(_state.e);
             break;
-        case Instructions::ADC_H:
+        case Instruction::ADC_H:
             _ADC(_state.h);
             break;
-        case Instructions::ADC_L:
+        case Instruction::ADC_L:
             _ADC(_state.l);
             break;
-        case Instructions::ADC_M:
+        case Instruction::ADC_M:
             _ADC(_memory[_state.hl]);
             break;
-        case Instructions::ADC_A:
+        case Instruction::ADC_A:
             _ADC(_state.a);
             break;
 
         // SUB and CMP
-        case Instructions::SUB_B:
-        case Instructions::CMP_B:
+        case Instruction::SUB_B:
+        case Instruction::CMP_B:
             _ADD(-_state.b);
             break;
-        case Instructions::SUB_C:
-        case Instructions::CMP_C:
+        case Instruction::SUB_C:
+        case Instruction::CMP_C:
             _ADD(-_state.c);
             break;
-        case Instructions::SUB_D:
-        case Instructions::CMP_D:
+        case Instruction::SUB_D:
+        case Instruction::CMP_D:
             _ADD(-_state.d);
             break;
-        case Instructions::SUB_E:
-        case Instructions::CMP_E:
+        case Instruction::SUB_E:
+        case Instruction::CMP_E:
             _ADD(-_state.e);
             break;
-        case Instructions::SUB_H:
-        case Instructions::CMP_H:
+        case Instruction::SUB_H:
+        case Instruction::CMP_H:
             _ADD(-_state.h);
             break;
-        case Instructions::SUB_L:
-        case Instructions::CMP_L:
+        case Instruction::SUB_L:
+        case Instruction::CMP_L:
             _ADD(-_state.l);
             break;
-        case Instructions::SUB_M:
-        case Instructions::CMP_M:
+        case Instruction::SUB_M:
+        case Instruction::CMP_M:
             _ADD(-_memory[_state.hl]);
             break;
-        case Instructions::SUB_A:
-        case Instructions::CMP_A:
+        case Instruction::SUB_A:
+        case Instruction::CMP_A:
             _ADD(-_state.a);
             break;
-        case Instructions::SUI:
+        case Instruction::SUI:
             _ADD(-opcode.operands[0]);
             _state.pc++;
             break;
 
         // SBB
-        case Instructions::SBB_B:
+        case Instruction::SBB_B:
             _ADC(-_state.b);
             break;
-        case Instructions::SBB_C:
+        case Instruction::SBB_C:
             _ADC(-_state.c);
             break;
-        case Instructions::SBB_D:
+        case Instruction::SBB_D:
             _ADC(-_state.d);
             break;
-        case Instructions::SBB_E:
+        case Instruction::SBB_E:
             _ADC(-_state.e);
             break;
-        case Instructions::SBB_H:
+        case Instruction::SBB_H:
             _ADC(-_state.h);
             break;
-        case Instructions::SBB_L:
+        case Instruction::SBB_L:
             _ADC(-_state.l);
             break;
-        case Instructions::SBB_M:
+        case Instruction::SBB_M:
             _ADC(-_memory[_state.hl]);
             break;
-        case Instructions::SBB_A:
+        case Instruction::SBB_A:
             _ADC(-_state.a);
             break;
 
         // ANA
-        case Instructions::ANA_B:
+        case Instruction::ANA_B:
             _ANA(_state.b);
             break;
-        case Instructions::ANA_C:
+        case Instruction::ANA_C:
             _ANA(_state.c);
             break;
-        case Instructions::ANA_D:
+        case Instruction::ANA_D:
             _ANA(_state.d);
             break;
-        case Instructions::ANA_E:
+        case Instruction::ANA_E:
             _ANA(_state.e);
             break;
-        case Instructions::ANA_H:
+        case Instruction::ANA_H:
             _ANA(_state.h);
             break;
-        case Instructions::ANA_L:
+        case Instruction::ANA_L:
             _ANA(_state.l);
             break;
-        case Instructions::ANA_M:
+        case Instruction::ANA_M:
             _ANA(_memory[_state.hl]);
             break;
-        case Instructions::ANA_A:
+        case Instruction::ANA_A:
             _ANA(_state.a);
             break;
-        case Instructions::ANI:
+        case Instruction::ANI:
             _ANA(opcode.operands[0]);
             _state.pc++;
             break;
 
         // XRA
-        case Instructions::XRA_B:
+        case Instruction::XRA_B:
             _XRA(_state.b);
             break;
-        case Instructions::XRA_C:
+        case Instruction::XRA_C:
             _XRA(_state.c);
             break;
-        case Instructions::XRA_D:
+        case Instruction::XRA_D:
             _XRA(_state.d);
             break;
-        case Instructions::XRA_E:
+        case Instruction::XRA_E:
             _XRA(_state.e);
             break;
-        case Instructions::XRA_H:
+        case Instruction::XRA_H:
             _XRA(_state.h);
             break;
-        case Instructions::XRA_L:
+        case Instruction::XRA_L:
             _XRA(_state.l);
             break;
-        case Instructions::XRA_M:
+        case Instruction::XRA_M:
             _XRA(_memory[_state.hl]);
             break;
-        case Instructions::XRA_A:
+        case Instruction::XRA_A:
             _XRA(_state.a);
             break;
 
         // ORA
-        case Instructions::ORA_B:
+        case Instruction::ORA_B:
             _ORA(_state.b);
             break;
-        case Instructions::ORA_C:
+        case Instruction::ORA_C:
             _ORA(_state.c);
             break;
-        case Instructions::ORA_D:
+        case Instruction::ORA_D:
             _ORA(_state.d);
             break;
-        case Instructions::ORA_E:
+        case Instruction::ORA_E:
             _ORA(_state.e);
             break;
-        case Instructions::ORA_H:
+        case Instruction::ORA_H:
             _ORA(_state.h);
             break;
-        case Instructions::ORA_L:
+        case Instruction::ORA_L:
             _ORA(_state.l);
             break;
-        case Instructions::ORA_M:
+        case Instruction::ORA_M:
             _ORA(_memory[_state.hl]);
             break;
-        case Instructions::ORA_A:
+        case Instruction::ORA_A:
             _ORA(_state.a);
             break;
-        case Instructions::ORI:
+        case Instruction::ORI:
             _ORA(opcode.operands[0]);
             _state.sp++;
             break;
 
         // POP
-        case Instructions::POP_B:
+        case Instruction::POP_B:
             _POP(_state.bc);
             break;
-        case Instructions::POP_D:
+        case Instruction::POP_D:
             _POP(_state.de);
             break;
-        case Instructions::POP_H:
+        case Instruction::POP_H:
             _POP(_state.hl);
             break;
-        case Instructions::POP_PSW:
+        case Instruction::POP_PSW:
             _POP(_state.af);
             break;
 
         // PUSH
-        case Instructions::PUSH_B:
+        case Instruction::PUSH_B:
             _PUSH(_state.bc);
             break;
-        case Instructions::PUSH_D:
+        case Instruction::PUSH_D:
             _PUSH(_state.de);
             break;
-        case Instructions::PUSH_H:
+        case Instruction::PUSH_H:
             _PUSH(_state.hl);
             break;
-        case Instructions::PUSH_PSW:
+        case Instruction::PUSH_PSW:
             _PUSH(_state.af);
             break;
 
         // RET instructions
-        case Instructions::RET:
+        case Instruction::RET:
             _ret_if(true);
             break;
-        case Instructions::RNZ:
+        case Instruction::RNZ:
             _ret_if(!_state.flags.zero);
             break;
-        case Instructions::RNC:
+        case Instruction::RNC:
             _ret_if(!_state.flags.carry);
             break;
-        case Instructions::RPO:
+        case Instruction::RPO:
             _ret_if(!_state.flags.parity);
             break;
-        case Instructions::RP:
+        case Instruction::RP:
             _ret_if(!_state.flags.sign);
             break;
-        case Instructions::RZ:
+        case Instruction::RZ:
             _ret_if(_state.flags.zero);
             break;
-        case Instructions::RC:
+        case Instruction::RC:
             _ret_if(_state.flags.carry);
             break;
-        case Instructions::RPE:
+        case Instruction::RPE:
             _ret_if(_state.flags.parity);
             break;
-        case Instructions::RM:
+        case Instruction::RM:
             _ret_if(_state.flags.sign);
             break;
 
 
         // JMP instructions
-        case Instructions::JMP:
+        case Instruction::JMP:
             _jmp_if(true, opcode.operand);
             break;
-        case Instructions::JNZ:
+        case Instruction::JNZ:
             _jmp_if(!_state.flags.zero, opcode.operand);
             break;
-        case Instructions::JNC:
+        case Instruction::JNC:
             _jmp_if(!_state.flags.carry, opcode.operand);
             break;
-        case Instructions::JPO:
+        case Instruction::JPO:
             _jmp_if(!_state.flags.parity, opcode.operand);
             break;
-        case Instructions::JP:
+        case Instruction::JP:
             _jmp_if(!_state.flags.sign, opcode.operand);
             break;
-        case Instructions::JZ:
+        case Instruction::JZ:
             _jmp_if(_state.flags.zero, opcode.operand);
             break;
-        case Instructions::JC:
+        case Instruction::JC:
             _jmp_if(_state.flags.carry, opcode.operand);
             break;
-        case Instructions::JPE:
+        case Instruction::JPE:
             _jmp_if(_state.flags.parity, opcode.operand);
             break;
-        case Instructions::JM:
+        case Instruction::JM:
             _jmp_if(_state.flags.sign, opcode.operand);
             break;
 
         // CALL instructions
-        case Instructions::CALL:
+        case Instruction::CALL:
             _call_if(true, opcode.operand);
             break;
-        case Instructions::CNZ:
+        case Instruction::CNZ:
             _call_if(!_state.flags.zero, opcode.operand);
             break;
-        case Instructions::CPO:
+        case Instruction::CPO:
             _call_if(!_state.flags.parity, opcode.operand);
             break;
-        case Instructions::CPE:
+        case Instruction::CPE:
             _call_if(!_state.flags.sign, opcode.operand);
             break;
-        case Instructions::CZ:
+        case Instruction::CZ:
             _call_if(_state.flags.zero, opcode.operand);
             break;
-        case Instructions::CC:
+        case Instruction::CC:
             _call_if(_state.flags.carry, opcode.operand);
             break;
-        case Instructions::CP:
+        case Instruction::CP:
             _call_if(_state.flags.parity, opcode.operand);
             break;
-        case Instructions::CM:
+        case Instruction::CM:
             _call_if(!_state.flags.sign, opcode.operand);
             break;
 
         // RST
-        case Instructions::RST_0:
-            _RST(0x00);
-            break;
-        case Instructions::RST_1:
-            _RST(0x08);
-            break;
-        case Instructions::RST_2:
-            _RST(0x10);
-            break;
-        case Instructions::RST_3:
-            _RST(0x18);
-            break;
-        case Instructions::RST_4:
-            _RST(0x20);
-            break;
-        case Instructions::RST_5:
-            _RST(0x28);
-            break;
-        case Instructions::RST_6:
-            _RST(0x30);
-            break;
-        case Instructions::RST_7:
-            _RST(0x38);
+        case Instruction::RST_0:
+        case Instruction::RST_1:
+        case Instruction::RST_2:
+        case Instruction::RST_3:
+        case Instruction::RST_4:
+        case Instruction::RST_5:
+        case Instruction::RST_6:
+        case Instruction::RST_7:
+            _PUSH(_state.pc);
+            _state.pc = isr_offset(opcode.instruction);
             break;
 
-        // A MOV between a register and itself has a different cycle count than a NOP instruction
-        case Instructions::MOV_A_A:
-        case Instructions::MOV_B_B:
-        case Instructions::MOV_C_C:
-        case Instructions::MOV_D_D:
-        case Instructions::MOV_E_E:
-        case Instructions::MOV_H_H:
-        case Instructions::MOV_L_L:
-            break;
-
-        case Instructions::NOP:
-        case Instructions::NOP1:
-        case Instructions::NOP2:
-        case Instructions::NOP3:
-        case Instructions::NOP4:
-        case Instructions::NOP5:
-        case Instructions::NOP6:
-        case Instructions::NOP7:
-        case Instructions::NOP8:
-        case Instructions::NOP9:
-        case Instructions::NOP10:
+        case Instruction::MOV_A_A:
+        case Instruction::MOV_B_B:
+        case Instruction::MOV_C_C:
+        case Instruction::MOV_D_D:
+        case Instruction::MOV_E_E:
+        case Instruction::MOV_H_H:
+        case Instruction::MOV_L_L:
+        case Instruction::NOP:
+        case Instruction::NOP1:
+        case Instruction::NOP2:
+        case Instruction::NOP3:
+        case Instruction::NOP4:
+        case Instruction::NOP5:
+        case Instruction::NOP6:
+        case Instruction::NOP7:
+        case Instruction::NOP8:
+        case Instruction::NOP9:
+        case Instruction::NOP10:
             break;
 
         default:
             std::cout << "Unimplemented instruction. Halting CPU operation.\n";
-        case Instructions::HLT:
+        case Instruction::HLT:
             return false;
         }
+    
+        if (_state.interrupts_enabled.load() && _state.interrupt_vector.has_value())
+        {
+            _execute({ .instruction = _state.interrupt_vector.value() });
+            _state.interrupt_vector.reset();
+        }
+        else
+        {
+            _state.cycle += cycle(opcode.instruction);
+            _state.pc++;
+        }
 
-        _state.pc++;
         return true;
     }
 }
