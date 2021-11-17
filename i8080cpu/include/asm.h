@@ -43,7 +43,7 @@ namespace i8080
         Count
     }; 
 
-    static const uint8_t CYCLES[256] = {
+    static constexpr uint8_t CYCLES[256] = {
         4, 10, 7,  5,  5,  5,  7,  4,  4, 10, 7,  5,  5,  5,  7, 4,
         4, 10, 7,  5,  5,  5,  7,  4,  4, 10, 7,  5,  5,  5,  7, 4,
         4, 10, 16, 5,  5,  5,  7,  4,  4, 10, 16, 5,  5,  5,  7, 4,
@@ -62,20 +62,9 @@ namespace i8080
         5, 10, 10, 4,  11, 11, 7,  11, 5, 5,  10, 4,  11, 17, 7, 11
     };
 
-    uint8_t cycle(Instruction instruction)
-    {
-        return CYCLES[static_cast<uint8_t>(instruction)];
-    }
-
-    uint8_t isr_offset(Instruction instruction)
-    {
-        return (static_cast<uint8_t>(instruction) - static_cast<uint8_t>(Instruction::RST_0));
-    }
-
-    Instruction isr_to_rst(uint8_t isr_number)
-    {
-        return static_cast<Instruction>(isr_number * 8 + static_cast<uint8_t>(Instruction::RST_0));
-    }
+    uint8_t cycle(Instruction instruction);
+    uint8_t isr_offset(Instruction instruction);
+    Instruction isr_to_rst(uint8_t isr_number);
 
 #pragma pack(push, 1)
     struct Opcode

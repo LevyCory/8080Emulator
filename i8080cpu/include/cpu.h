@@ -14,6 +14,9 @@ class Cpu
 {
 public:
     Cpu(uint8_t* memory);
+    ~Cpu() = default;
+    Cpu(Cpu&& other) noexcept = default;
+    Cpu& operator= (Cpu&& other) noexcept = default;
 
     void run(uint16_t code_section, uint16_t stack);
     void interrupt(Instruction instruction);
@@ -119,7 +122,7 @@ private:
 #undef DEFINE_REGISTER
 
     State _state;
-    uint8_t* const _memory;
+    uint8_t* _memory;
 };
 
 }
