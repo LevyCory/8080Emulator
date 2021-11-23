@@ -1,10 +1,11 @@
 #pragma once
 
 #include <cstdint>
+#include <string_view>
 
 namespace i8080
 {
-    enum class Instruction
+    enum class Instruction : uint8_t
     {
         NOP = 0x00, LXI_B, STAX_B, INX_B, INR_B, DCR_B, MVI_B, RLC, NOP1,
         DAD_B, LDAX_B, DCX_B, INR_C, DCR_C, MVI_C, RRC, NOP2,
@@ -38,10 +39,43 @@ namespace i8080
         PCHL, JPE, XCHG, CPE, NOP9, XRI, RST_5, RP,
         POP_PSW, JP, DI, CP, PUSH_PSW, ORI, RST_6, RM,
         SPHL, JM, EI, CM, NOP10, CPI, RST_7,
-
-        // Must be last
-        Count
     }; 
+
+    static const char* DISASSEMBLY[] =
+    {
+        "NOP", "LXI B", "STAX B", "INX B", "INR B", "DCR B", "MVI B", "RLC", "NOP1",
+        "DAD B", "LDAX B", "DCX B", "INR C", "DCR C", "MVI C", "RRC", "NOP2",
+        "LXI D", "STAX D", "INX D", "INR D", "DCR D", "MVI D", "RAL", "NOP3",
+        "DAD D", "LDAX D", "DCX D", "INR E", "DCR E", "MVI E", "RAR", "RIM",
+        "LXI H", "SHLD", "INX H", "INR H", "DCR H", "MVI H", "DAA", "NOP4",
+        "DAD H", "LHLD", "DCX H", "INR L", "DCR L", "MVI L", "CMA", "SIM",
+        "LXI SP", "STA", "INX SP", "INR M", "DCR M", "MVI M", "STC", "NOP5",
+        "DAD SP", "LDA", "DCX SP", "INR A", "DCR A", "MVI A", "CMC", "MOV B B",
+        "MOV B, C", "MOV B, D", "MOV B, E", "MOV B, H", "MOV B, L", "MOV B, M", "MOV B, A", "MOV C, B",
+        "MOV C, C", "MOV C, D", "MOV C, E", "MOV C, H", "MOV C, L", "MOV C, M", "MOV C, A", "MOV D, B",
+        "MOV D, C", "MOV D, D", "MOV D, E", "MOV D, H", "MOV D, L", "MOV D, M", "MOV D, A", "MOV E, B",
+        "MOV E, C", "MOV E, D", "MOV E, E", "MOV E, H", "MOV E, L", "MOV E, M", "MOV E, A", "MOV H, B",
+        "MOV H, C", "MOV H, D", "MOV H, E", "MOV H, H", "MOV H, L", "MOV H, M", "MOV H, A", "MOV L, B",
+        "MOV L, C", "MOV L, D", "MOV L, E", "MOV L, H", "MOV L, L", "MOV L, M", "MOV L, A", "MOV M, B",
+        "MOV M, C", "MOV M, D", "MOV M, E", "MOV M, H", "MOV M, L", "HLT", "MOV M, A", "MOV A, B",
+        "MOV A, C", "MOV A, D", "MOV A, E", "MOV A, H", "MOV A, L", "MOV A, M", "MOV A, A", "ADD B",
+        "ADD C", "ADD D", "ADD E", "ADD H", "ADD L", "ADD M", "ADD A", "ADC B",
+        "ADC C", "ADC D", "ADC E", "ADC H", "ADC L", "ADC M", "ADC A", "SUB B",
+        "SUB C", "SUB D", "SUB E", "SUB H", "SUB L", "SUB M", "SUB A", "SBB B",
+        "SBB C", "SBB D", "SBB E", "SBB H", "SBB L", "SBB M", "SBB A", "ANA B",
+        "ANA C", "ANA D", "ANA E", "ANA H", "ANA L", "ANA M", "ANA A", "XRA B",
+        "XRA C", "XRA D", "XRA E", "XRA H", "XRA L", "XRA M", "XRA A", "ORA B",
+        "ORA C", "ORA D", "ORA E", "ORA H", "ORA L", "ORA M", "ORA A", "CMP B",
+        "CMP C", "CMP D", "CMP E", "CMP H", "CMP L", "CMP M", "CMP A", "RNZ",
+        "POP B", "JNZ", "JMP", "CNZ", "PUSH B", "ADI", "RST 0", "RZ",
+        "RET", "JZ", "NOP6", "CZ", "CALL", "ACI", "RST 1", "RNC",
+        "POP D", "JNC", "OUT", "CNC", "PUSH D", "SUI", "RST 2", "RC",
+        "NOP7", "JC", "IN", "CC", "NOP8", "SBI", "RST 3", "RPO",
+        "POP H", "JPO", "XTHL", "CPO", "PUSH H", "ANI", "RST 4", "RPE",
+        "PCHL", "JPE", "XCHG", "CPE", "NOP9", "XRI", "RST 5", "RP",
+        "POP PSW", "JP", "DI", "CP", "PUSH PSW", "ORI", "RST 6", "RM",
+        "SPHL", "JM", "EI", "CM", "NOP10", "CPI", "RST 7",
+    };
 
     static constexpr uint8_t CYCLES[256] = {
         4, 10, 7,  5,  5,  5,  7,  4,  4, 10, 7,  5,  5,  5,  7, 4,
@@ -62,9 +96,7 @@ namespace i8080
         5, 10, 10, 4,  11, 11, 7,  11, 5, 5,  10, 4,  11, 17, 7, 11
     };
 
-    uint8_t cycle(Instruction instruction);
-    uint8_t isr_offset(Instruction instruction);
-    Instruction isr_to_rst(uint8_t isr_number);
+    
 
 #pragma pack(push, 1)
     struct Opcode
@@ -72,9 +104,14 @@ namespace i8080
         Instruction instruction;
         union
         {
-            uint16_t operand;
-            uint8_t operands[2];
+            uint16_t u16operand;
+            uint8_t u8operand;
         };
     };
 #pragma pack(pop)
+
+    uint8_t cycle(Instruction instruction);
+    uint8_t isr_offset(Instruction instruction);
+    Instruction isr_to_rst(uint8_t isr_number);
+    void print_dissassembly(const Opcode& opcode);
 }

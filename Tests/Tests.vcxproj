@@ -168,6 +168,9 @@
   <ItemGroup>
     <None Include="Resources\test8080.com" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="extended_device.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

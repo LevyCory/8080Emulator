@@ -24,12 +24,21 @@
     <ClInclude Include="include\cpu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\device.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\bus.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\cpu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\asm.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\bus.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

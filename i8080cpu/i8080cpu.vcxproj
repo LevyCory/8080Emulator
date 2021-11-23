@@ -156,11 +156,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="include\asm.h" />
+    <ClInclude Include="include\bus.h" />
     <ClInclude Include="include\common.h" />
     <ClInclude Include="include\cpu.h" />
+    <ClInclude Include="include\device.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\asm.cpp" />
+    <ClCompile Include="src\bus.cpp" />
     <ClCompile Include="src\cpu.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
