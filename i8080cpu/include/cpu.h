@@ -16,14 +16,17 @@ namespace i8080
             union
             {
                 uint8_t status;
-                uint8_t carry : 1;
-                uint8_t reserved1 : 1;
-                uint8_t parity : 1;
-                uint8_t reserved2 : 1;
-                uint8_t aux : 1;
-                uint8_t reserved3 : 1;
-                uint8_t zero : 1;
-                uint8_t sign : 1;
+                struct
+                {
+                    uint8_t carry : 1;
+                    uint8_t reserved1 : 1;
+                    uint8_t parity : 1;
+                    uint8_t reserved2 : 1;
+                    uint8_t aux : 1;
+                    uint8_t reserved3 : 1;
+                    uint8_t zero : 1;
+                    uint8_t sign : 1;
+                };
             };
         };
 #pragma pack(pop)
@@ -47,8 +50,8 @@ namespace i8080
                 uint16_t af;
                 struct
                 {
-                    Flags flags;
                     uint8_t a;
+                    Flags flags;
                 };
             };
 
@@ -69,7 +72,9 @@ namespace i8080
 #undef DEFINE_REGISTER
 
     public:
-        Cpu(Bus& bus, uint16_t pc, uint16_t sp);
+        static constexpr uint16_t PROGRAM_START_OFFSET = 0x100;
+
+        Cpu(Bus& bus);
         ~Cpu() = default;
         Cpu(const Cpu&) = delete;
         Cpu& operator= (const Cpu&) = delete;
@@ -91,8 +96,7 @@ namespace i8080
         const Opcode& _fetch() const;
         void _execute(const Opcode& opcode);
 
-        template <typename T>
-        bool _is_zero(T number) { return number == 0; }
+        bool _is_zero(uint8_t number) { return number == 0; }
         bool _is_signed(uint16_t number) { return (number & 0x80) != 0; }
         bool _is_carry(uint16_t number) { return number > 0xff; }
         bool _is_carry(uint32_t number) { return number > 0xffff; }
@@ -103,24 +107,29 @@ namespace i8080
         void _bitwise_instruction(uint8_t reg)
         {
             _state.a = T()(_state.a, reg);
-            _state.flags.zero = _is_zero(_state.a);
-            _state.flags.sign = _is_carry(_state.a);
-            _state.flags.parity = _get_parity(_state.a);
+
+            _set_zero_parity_sign(_state.a);
 
             _state.flags.carry = 0;
             _state.flags.aux = 0;
         }
 
+        void _add(uint8_t value, uint8_t carry);
         void _ret_if(bool condition);
         void _jmp_if(bool condition, uint16_t address);
         void _call_if(bool condition, uint16_t address);
         void _handle_change_by_1(uint8_t& reg, std::function<void(uint8_t&)> op);
+        void _set_zero_parity_sign(uint16_t value);
+        void _set_zero_parity_sign(uint8_t value);
 
         void _ADD(uint8_t reg);
         void _ADC(uint8_t reg);
+        void _SUB(uint8_t reg);
+        void _SBB(uint8_t reg);
         void _ANA(uint8_t reg);
         void _XRA(uint8_t reg);
         void _ORA(uint8_t reg);
+        void _CMP(uint8_t reg);
         void _INR(uint8_t& reg);
         void _DCR(uint8_t& reg);
         void _DAD(uint16_t reg);

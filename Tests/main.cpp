@@ -1,8 +1,7 @@
+
 #include <i8080cpu\include\cpu.h>
 #include <i8080cpu\include\bus.h>
 #include <i8080cpu\include\device.h>
-
-#include "extended_device.h"
 
 #include <vector>
 #include <numeric>
@@ -16,32 +15,42 @@ using buffer = std::vector<uint8_t>;
 
 static constexpr uint16_t MEMORY_NAMESPACE_SIZE = std::numeric_limits<uint16_t>::max();
 
-struct TestStateDevice : public i8080::Device
+class TestControlDevice : public i8080::Device
 {
-    bool finished = false;
+public:
+    TestControlDevice(bool& finished) :
+        _finished(finished)
+    {}
 
     void write(uint8_t) override
     {
-        finished = true;
+        _finished = true;
     }
+
+private:
+    bool& _finished;
 };
 
-class DebugDevice : public ExtendedDevice
+class IODevice : public i8080::Device
 {
+    static constexpr uint8_t PRINT_STATUS_REG_E = 2;
+    static constexpr uint8_t PRINT_MESSAGE = 9;
+
 public:
-    DebugDevice(const i8080::Cpu& cpu, const buffer& memory) :
-        ExtendedDevice(cpu, memory)
+    IODevice(const i8080::Cpu& cpu, const buffer& memory) :
+        _cpu(cpu),
+        _memory(memory)
     {}
 
     void write(uint8_t byte) override
     {
         switch (byte)
         {
-        case PRINT_E_REG_VALUE:
+        case PRINT_STATUS_REG_E:
             std::cout << static_cast<char>(_cpu.state().e);
             break;
-        case OUTPUT_DE_MEMORY:
-            _print_de_memory();
+        case PRINT_MESSAGE:
+            _print_message_in_de();
             break;
         default:
             return;
@@ -49,7 +58,7 @@ public:
     }
 
 private:
-    void _print_de_memory()
+    void _print_message_in_de()
     {
         uint16_t address = _cpu.state().de;
 
@@ -59,11 +68,11 @@ private:
         }
     }
 
-    static constexpr uint8_t PRINT_E_REG_VALUE = 2;
-    static constexpr uint8_t OUTPUT_DE_MEMORY = 9;
+    const i8080::Cpu & _cpu;
+    const buffer& _memory;
 };
 
-bool load_binary(const fs::path& path, buffer& memory, uint16_t offset)
+bool load_binary(const fs::path& path, buffer& memory)
 {
     std::memset(memory.data(), 0, memory.capacity());
     std::ifstream test_file(path, std::ios::binary);
@@ -72,7 +81,7 @@ bool load_binary(const fs::path& path, buffer& memory, uint16_t offset)
         return false;
     }
 
-    if (test_file.read(reinterpret_cast<char*>(memory.data() + offset), memory.size()))
+    if (test_file.read(reinterpret_cast<char*>(memory.data() + i8080::Cpu::PROGRAM_START_OFFSET), memory.size()))
     {
         return false;
     }
@@ -89,24 +98,31 @@ bool load_binary(const fs::path& path, buffer& memory, uint16_t offset)
     return true;
 }
 
-int main()
+uint64_t run_test(const fs::path& test_rom, buffer& memory, bool debug)
 {
-    buffer memory(MEMORY_NAMESPACE_SIZE);
-    load_binary(".\\Resources\\test8080.com", memory, 0x100);
+    bool test_finished = false;
+
+    load_binary(test_rom, memory);
     i8080::Bus bus(memory);
 
-    auto test_device = std::make_shared<TestStateDevice>();
-    bus.register_device(0, test_device);
+    i8080::Cpu cpu(bus);
+    cpu.set_debug(debug);
 
-    i8080::Cpu cpu(bus, 0x100, 0);
-    cpu.set_debug(true);
+    bus.register_device(0, std::make_shared<TestControlDevice>(test_finished));
+    bus.register_device(1, std::make_shared<IODevice>(cpu, memory));
 
-    bus.register_device(1, std::make_shared<DebugDevice>(cpu, memory));
-
-    while (!(test_device->finished || cpu.halt()))
+    while (!(test_finished || cpu.halt()))
     {
         cpu.tick();
     }
 
+    return cpu.state().cycle;
+}
+
+int main()
+{
+    buffer memory(MEMORY_NAMESPACE_SIZE);
+
+    run_test(".\\Resources\\test8080.com", memory, true);
     return 0;
 }

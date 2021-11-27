@@ -22,7 +22,7 @@ namespace i8080
 
     void print_dissassembly(const Opcode& opcode)
     {
-        std::cout << DISASSEMBLY[static_cast<uint8_t>(opcode.instruction)];
+        std::cerr << DISASSEMBLY[static_cast<uint8_t>(opcode.instruction)];
 
         switch (opcode.instruction)
         {
@@ -52,7 +52,7 @@ namespace i8080
         case Instruction::LXI_H:
         case Instruction::LXI_SP:
             //std::cout << " " << std::hex << opcode.operand << "h";
-            std::cout << " " << std::hex << std::setfill('0') << std::setw(4) << opcode.u16operand << "h";
+            std::cerr << " " << std::hex << std::setfill('0') << std::setw(4) << opcode.u16operand << "h";
             break;
 
         case Instruction::IN:
@@ -61,6 +61,9 @@ namespace i8080
         case Instruction::ANI:
         case Instruction::SUI:
         case Instruction::ADI:
+        case Instruction::CPI:
+        case Instruction::ACI:
+        case Instruction::SBI:
         case Instruction::MVI_B:
         case Instruction::MVI_C:
         case Instruction::MVI_D:
@@ -69,13 +72,13 @@ namespace i8080
         case Instruction::MVI_L:
         case Instruction::MVI_M:
         case Instruction::MVI_A:
-            std::cout << " " << std::hex << std::setfill('0') << std::setw(2) << opcode.u8operand << "h";
+            std::cerr << " " << std::setfill('0') << std::setw(2) << std::hex << (opcode.u8operand & 0xff) << "h";
             break;
 
         default:
             break;
         }
 
-        std::cout << "\n";
+        std::cerr << "\n";
     }
 }

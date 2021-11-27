@@ -6,7 +6,7 @@
 
 namespace i8080
 {
-    Cpu::Cpu(Bus& bus, uint16_t pc, uint16_t sp) :
+    Cpu::Cpu(Bus& bus) :
         _debug(false),
         _bus(bus)
     {
@@ -14,9 +14,9 @@ namespace i8080
         _state.bc = 0;
         _state.de = 0;
         _state.hl = 0;
+        _state.sp = 0;
 
-        _state.pc = pc;
-        _state.sp = sp;
+        _state.pc = PROGRAM_START_OFFSET;
 
         _state.cycle = 0;
         _state.halt = false;
@@ -51,18 +51,43 @@ namespace i8080
     void Cpu::_handle_change_by_1(uint8_t& reg, std::function<void(uint8_t&)> op)
     {
         op(reg);
-        _state.flags.zero = _is_zero(reg & 0xff);
-        _state.flags.sign = _is_signed(reg & 0x80);
-        _state.flags.parity = _get_parity(reg & 0xff);
+        _set_zero_parity_sign(reg);
         _state.flags.aux = (((_state.a & 0xf) + (reg & 0xf)) > 0xf);
+    }
+
+    void Cpu::_set_zero_parity_sign(uint8_t value)
+    {
+        _state.flags.zero = _is_zero(value);
+        _state.flags.sign = _is_signed(value & 0x80);
+        _state.flags.parity = _get_parity(value);
+    }
+
+    void Cpu::_set_zero_parity_sign(uint16_t value)
+    {
+        _state.flags.zero = _is_zero(value & 0xff);
+        _state.flags.sign = _is_signed(value & 0x80);
+        _state.flags.parity = _get_parity(value & 0xff);
+    }
+
+    void Cpu::_add(uint8_t value, uint8_t carry)
+    {
+        uint16_t result = static_cast<uint16_t>(_state.a) +
+                          static_cast<uint16_t>(value) + _state.flags.carry;
+
+        _set_zero_parity_sign(result);
+
+        _state.flags.carry = _is_carry(result);
+        _state.flags.aux = (((_state.a & 0xf) + (value & 0xf) + _state.flags.carry) > 0xf);
+
+        _state.a = result & 0xff;
     }
 
     void Cpu::_ret_if(bool condition)
     {
         if (condition)
         {
-            _bus.mem_read(_state.sp, _state.pc);
-            _state.sp += 2;
+            _POP(_state.pc);
+            _state.pc--;
             _state.cycle += CONDITION_MET_CYCLE_COUNT;
         }
     }
@@ -84,7 +109,7 @@ namespace i8080
     {
         if (condition)
         {
-            _PUSH(_state.pc);
+            _PUSH(_state.pc + 3);
             _jmp_if(true, address);
             _state.cycle += CONDITION_MET_CYCLE_COUNT;
         }
@@ -93,31 +118,22 @@ namespace i8080
     // Instructions
     void Cpu::_ADD(uint8_t reg)
     {
-        uint16_t result = static_cast<uint16_t>(_state.a) + static_cast<uint16_t>(reg);
-
-        _state.flags.zero = _is_zero(result & 0xff);
-        _state.flags.sign = _is_signed(result & 0x80);
-        _state.flags.parity = _get_parity(result & 0xff);
-
-        _state.flags.carry = _is_carry(result);
-        _state.flags.aux = (((_state.a & 0xf) + (reg & 0xf)) > 0xf);
-
-        _state.a = result & 0xff;
+        _add(reg, 0);
     }
 
     void Cpu::_ADC(uint8_t reg)
     {
-        uint16_t result = static_cast<uint16_t>(_state.a) +
-                          static_cast<uint16_t>(reg) + _state.flags.carry;
+        _add(reg, _state.flags.carry);
+    }
 
-        _state.flags.zero = _is_zero(result & 0xff);
-        _state.flags.sign = _is_signed(result & 0x80);
-        _state.flags.parity = _get_parity(result & 0xff);
+    void Cpu::_SUB(uint8_t reg)
+    {
+        _add(-reg, 0);
+    }
 
-        _state.flags.carry = _is_carry(result);
-        _state.flags.aux = (((_state.a & 0xf) + (reg & 0xf) + _state.flags.carry) > 0xf);
-
-        _state.a = result & 0xff;
+    void Cpu::_SBB(uint8_t reg)
+    {
+        _add(-reg, _state.flags.carry);
     }
 
     void Cpu::_ANA(uint8_t reg)
@@ -133,6 +149,13 @@ namespace i8080
     void Cpu::_ORA(uint8_t reg)
     {
         _bitwise_instruction<std::bit_or<uint8_t>>(reg);
+    }
+
+    void Cpu::_CMP(uint8_t reg)
+    {
+        int16_t result = _state.a - reg;
+        _state.flags.carry = result >> 8;
+        _set_zero_parity_sign(static_cast<uint16_t>(result));
     }
 
     void Cpu::_INR(uint8_t& reg)
@@ -154,8 +177,8 @@ namespace i8080
 
     void Cpu::_PUSH(uint16_t reg)
     {
-        _bus.mem_write(_state.sp, reg);
         _state.sp -= 2;
+        _bus.mem_write(_state.sp, reg);
     }
 
     void Cpu::_POP(uint16_t& reg)
@@ -166,12 +189,13 @@ namespace i8080
 
     bool Cpu::_get_parity(uint16_t number)
     {
-        uint16_t temp = number ^ (number >> 1);
-        temp = temp ^ (temp >> 2);
-        temp = temp ^ (temp >> 4);
-        temp = temp ^ (temp >> 8);
+        uint8_t one_bits = 0;
+        for (int i = 0; i < 16; i++)
+        {
+            one_bits += ((number >> i) & 1);
+        }
 
-        return temp & 1;
+        return !(one_bits & 1);
     }
 
     void Cpu::_execute(const Opcode& opcode)
@@ -631,69 +655,99 @@ namespace i8080
         case Instruction::ADC_A:
             _ADC(_state.a);
             break;
-
-        // SUB and CMP
-        case Instruction::SUB_B:
-        case Instruction::CMP_B:
-            _ADD(-_state.b);
-            break;
-        case Instruction::SUB_C:
-        case Instruction::CMP_C:
-            _ADD(-_state.c);
-            break;
-        case Instruction::SUB_D:
-        case Instruction::CMP_D:
-            _ADD(-_state.d);
-            break;
-        case Instruction::SUB_E:
-        case Instruction::CMP_E:
-            _ADD(-_state.e);
-            break;
-        case Instruction::SUB_H:
-        case Instruction::CMP_H:
-            _ADD(-_state.h);
-            break;
-        case Instruction::SUB_L:
-        case Instruction::CMP_L:
-            _ADD(-_state.l);
-            break;
-        case Instruction::SUB_M:
-        case Instruction::CMP_M:
-            _ADD(-_bus.mem_read_u8_ref(_state.hl));
-            break;
-        case Instruction::SUB_A:
-        case Instruction::CMP_A:
-            _ADD(-_state.a);
-            break;
-        case Instruction::SUI:
-            _ADD(-opcode.u8operand);
+        case Instruction::ACI:
+            _ADC(opcode.u8operand);
             _state.pc++;
             break;
 
+        // SUB
+        case Instruction::SUB_B:
+            _SUB(_state.b);
+            break;
+        case Instruction::SUB_C:
+            _SUB(_state.c);
+            break;
+        case Instruction::SUB_D:
+            _SUB(_state.d);
+            break;
+        case Instruction::SUB_E:
+            _SUB(_state.e);
+            break;
+        case Instruction::SUB_H:
+            _SUB(_state.h);
+            break;
+        case Instruction::SUB_L:
+            _SUB(_state.l);
+            break;
+        case Instruction::SUB_M:
+            _SUB(_bus.mem_read_u8_ref(_state.hl));
+            break;
+        case Instruction::SUB_A:
+            _SUB(_state.a);
+            break;
+        case Instruction::SUI:
+            _SUB(opcode.u8operand);
+            _state.pc++;
+            break;
+
+        case Instruction::CMP_C:
+            _CMP(_state.c);
+            break;
+        case Instruction::CMP_D:
+            _CMP(_state.d);
+            break;
+        case Instruction::CMP_E:
+            _CMP(_state.e);
+            break;
+        case Instruction::CMP_H:
+            _CMP(_state.h);
+            break;
+        case Instruction::CMP_L:
+            _CMP(_state.l);
+            break;
+        case Instruction::CMP_M:
+            _CMP(_bus.mem_read_u8_ref(_state.hl));
+            break;
+        case Instruction::CMP_A:
+            _CMP(_state.a);
+            break;
+        case Instruction::CMP_B:
+            _CMP(_state.b);
+            break;
+        case Instruction::CPI:
+            _CMP(opcode.u8operand);
+            _state.pc++;
+            break;
+
+
         // SBB
         case Instruction::SBB_B:
-            _ADC(-_state.b);
+            _SBB(_state.b);
             break;
         case Instruction::SBB_C:
-            _ADC(-_state.c);
+            _SBB(_state.c);
             break;
         case Instruction::SBB_D:
-            _ADC(-_state.d);
+            _SBB(_state.d);
             break;
         case Instruction::SBB_E:
-            _ADC(-_state.e);
+            _SBB(_state.e);
             break;
         case Instruction::SBB_H:
-            _ADC(-_state.h);
+            _SBB(_state.h);
             break;
         case Instruction::SBB_L:
-            _ADC(-_state.l);
+            _SBB(_state.l);
             break;
         case Instruction::SBB_M:
-            _ADC(-_bus.mem_read_u8_ref(_state.hl));
+            _SBB(_bus.mem_read_u8_ref(_state.hl));
             break;
         case Instruction::SBB_A:
-            _ADC(-_state.a);
+            _SBB(_state.a);
+            break;
+        case Instruction::SBI:
+            _SBB(opcode.u8operand);
+            _state.pc++;
             break;
 
         // ANA
@@ -930,12 +984,9 @@ namespace i8080
         case Instruction::DAA:
         case Instruction::CMA:
         case Instruction::CMC:
-        case Instruction::ACI:
-        case Instruction::SBI:
         case Instruction::XRI:
-        case Instruction::CPI:
         default:
-            std::cout << "Unimplemented instruction " << std::to_string((uint8_t)opcode.instruction) << ", Halting CPU operation.\n";
+            std::cerr << "Unimplemented instruction " << std::to_string((uint8_t)opcode.instruction) << ", Halting CPU operation.\n";
         case Instruction::HLT:
             _state.halt = true;
             return;

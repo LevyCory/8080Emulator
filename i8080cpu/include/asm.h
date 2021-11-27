@@ -43,14 +43,14 @@ namespace i8080
 
     static const char* DISASSEMBLY[] =
     {
-        "NOP", "LXI B", "STAX B", "INX B", "INR B", "DCR B", "MVI B", "RLC", "NOP1",
-        "DAD B", "LDAX B", "DCX B", "INR C", "DCR C", "MVI C", "RRC", "NOP2",
-        "LXI D", "STAX D", "INX D", "INR D", "DCR D", "MVI D", "RAL", "NOP3",
-        "DAD D", "LDAX D", "DCX D", "INR E", "DCR E", "MVI E", "RAR", "RIM",
-        "LXI H", "SHLD", "INX H", "INR H", "DCR H", "MVI H", "DAA", "NOP4",
-        "DAD H", "LHLD", "DCX H", "INR L", "DCR L", "MVI L", "CMA", "SIM",
-        "LXI SP", "STA", "INX SP", "INR M", "DCR M", "MVI M", "STC", "NOP5",
-        "DAD SP", "LDA", "DCX SP", "INR A", "DCR A", "MVI A", "CMC", "MOV B B",
+        "NOP", "LXI B,", "STAX B", "INX B", "INR B", "DCR B", "MVI B,", "RLC", "NOP1",
+        "DAD B", "LDAX B", "DCX B", "INR C", "DCR C", "MVI C,", "RRC", "NOP2",
+        "LXI D,", "STAX D", "INX D", "INR D", "DCR D", "MVI D,", "RAL", "NOP3",
+        "DAD D", "LDAX D", "DCX D", "INR E", "DCR E", "MVI E,", "RAR", "RIM",
+        "LXI H,", "SHLD", "INX H", "INR H", "DCR H", "MVI H,", "DAA", "NOP4",
+        "DAD H", "LHLD", "DCX H", "INR L", "DCR L", "MVI L,", "CMA", "SIM",
+        "LXI SP,", "STA", "INX SP", "INR M", "DCR M", "MVI M,", "STC", "NOP5",
+        "DAD SP", "LDA", "DCX SP", "INR A", "DCR A", "MVI A,", "CMC", "MOV B B",
         "MOV B, C", "MOV B, D", "MOV B, E", "MOV B, H", "MOV B, L", "MOV B, M", "MOV B, A", "MOV C, B",
         "MOV C, C", "MOV C, D", "MOV C, E", "MOV C, H", "MOV C, L", "MOV C, M", "MOV C, A", "MOV D, B",
         "MOV D, C", "MOV D, D", "MOV D, E", "MOV D, H", "MOV D, L", "MOV D, M", "MOV D, A", "MOV E, B",
