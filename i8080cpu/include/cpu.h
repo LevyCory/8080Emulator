@@ -114,7 +114,7 @@ namespace i8080
             _state.flags.aux = 0;
         }
 
-        void _add(uint8_t value, uint8_t carry);
+        void _add(uint16_t value, uint8_t carry);
         void _ret_if(bool condition);
         void _jmp_if(bool condition, uint16_t address);
         void _call_if(bool condition, uint16_t address);

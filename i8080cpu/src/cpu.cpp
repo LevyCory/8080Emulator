@@ -69,15 +69,14 @@ namespace i8080
         _state.flags.parity = _get_parity(value & 0xff);
     }
 
-    void Cpu::_add(uint8_t value, uint8_t carry)
+    void Cpu::_add(uint16_t value, uint8_t carry)
     {
-        uint16_t result = static_cast<uint16_t>(_state.a) +
-                          static_cast<uint16_t>(value) + _state.flags.carry;
+        uint16_t result = static_cast<uint16_t>(_state.a) + (value + carry);
 
         _set_zero_parity_sign(result);
 
         _state.flags.carry = _is_carry(result);
-        _state.flags.aux = (((_state.a & 0xf) + (value & 0xf) + _state.flags.carry) > 0xf);
+        _state.flags.aux = (((_state.a & 0xf) + (value & 0xf) + carry) > 0xf);
 
         _state.a = result & 0xff;
     }
@@ -133,7 +132,7 @@ namespace i8080
 
     void Cpu::_SBB(uint8_t reg)
     {
-        _add(-reg, _state.flags.carry);
+        _add(-reg, -_state.flags.carry);
     }
 
     void Cpu::_ANA(uint8_t reg)
