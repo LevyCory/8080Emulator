@@ -20,9 +20,10 @@ namespace i8080
         return static_cast<Instruction>(isr_number * 8 + static_cast<uint8_t>(Instruction::RST_0));
     }
 
-    void print_dissassembly(const Opcode& opcode)
+    void print_dissassembly(const Opcode& opcode, uint16_t pc)
     {
-        std::cerr << DISASSEMBLY[static_cast<uint8_t>(opcode.instruction)];
+        std::cerr << std::hex << std::setfill('0') << std::setw(4)
+                  << pc << "    " << DISASSEMBLY[static_cast<uint8_t>(opcode.instruction)];
 
         switch (opcode.instruction)
         {

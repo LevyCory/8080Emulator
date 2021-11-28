@@ -113,5 +113,5 @@ namespace i8080
     uint8_t cycle(Instruction instruction);
     uint8_t isr_offset(Instruction instruction);
     Instruction isr_to_rst(uint8_t isr_number);
-    void print_dissassembly(const Opcode& opcode);
+    void print_dissassembly(const Opcode& opcode, uint16_t pc);
 }

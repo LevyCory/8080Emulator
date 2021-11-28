@@ -200,6 +200,11 @@ namespace i8080
 
     void Cpu::_execute(const Opcode& opcode)
     {
+        if (_debug)
+        {
+            print_dissassembly(opcode, _state.pc);
+        }
+
         switch (opcode.instruction)
         {
         case Instruction::OUT:
@@ -1001,11 +1006,6 @@ namespace i8080
         {
             _state.cycle += cycle(opcode.instruction);
             _state.pc++;
-        }
-
-        if (_debug)
-        {
-            print_dissassembly(opcode);
         }
     }
 }
