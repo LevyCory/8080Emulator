@@ -1,7 +1,7 @@
 
-#include <i8080cpu\include\cpu.h>
-#include <i8080cpu\include\bus.h>
-#include <i8080cpu\include\device.h>
+#include <i8080/device.h>
+#include <i8080/bus.h>
+#include <i8080/cpu.h>
 
 #include <vector>
 #include <numeric>
@@ -126,3 +126,11 @@ int main()
     run_test(".\\Resources\\test8080.com", memory, true);
     return 0;
 }
+
+/*
+02d0    CPE 02d9h
+02d3    ADI 0002h
+02d5    RPO
+02c5    CPI 00d9h
+02c7    JZ 032ah
+*/

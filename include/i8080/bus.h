@@ -1,7 +1,6 @@
 #pragma once
 
 #include <array>
-#include <unordered_map>
 
 #include "asm.h"
 #include "common.h"
@@ -39,23 +38,4 @@ namespace i8080
         buffer& _memory;
         std::array<Device::sptr, 8> _devices;
     };
-
-    //class Device 
-    //{};
-
-    //class Bus2 final
-    //{
-    //public:
-    //    Opcode& fetch() const;
-    //    void mem_write(uint16_t address, uint8_t value);
-    //    uint8_t mem_read(uint16_t address);
-
-    //    void register_device(uint8_t id, Device::sptr device);
-
-    //    void write(uint8_t device);
-    //    uint8_t read(uint8_t device);
-
-    //private:
-    //    std::array<Device::sptr, 8> _devices;
-    //};
 }

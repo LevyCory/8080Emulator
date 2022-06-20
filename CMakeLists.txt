@@ -1,0 +1,19 @@
+cmake_minimum_required(VERSION 3.1)
+
+set(CMAKE_CXX_STANDARD 20)
+
+project(
+    8080Emulator
+    VERSION 1.0
+    LANGUAGES CXX)
+
+
+set(INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
+set(SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
+
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+add_subdirectory(${SOURCE_DIR}/i8080)
+add_subdirectory(${SOURCE_DIR}/i8080tests)

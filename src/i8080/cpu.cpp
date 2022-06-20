@@ -112,6 +112,10 @@ namespace i8080
             _jmp_if(true, address);
             _state.cycle += CONDITION_MET_CYCLE_COUNT;
         }
+        else
+        {
+            _state.pc += 2;
+        }
     }
 
     // Instructions
@@ -201,7 +205,7 @@ namespace i8080
     {
         if (_debug)
         {
-            print_dissassembly(opcode, _state.pc);
+            print_dissassembly(opcode, _state.pc + PROGRAM_START_OFFSET);
         }
 
         switch (opcode.instruction)
@@ -274,6 +278,9 @@ namespace i8080
             // Roll A left
             _state.flags.carry = _state.a >> 7;
             _state.a = (_state.a << 1) | _state.flags.carry;
+            break;
+        case Instruction::CMC:
+            _state.flags.carry = ~_state.flags.carry;
             break;
 
         // MOV
@@ -809,6 +816,10 @@ namespace i8080
         case Instruction::XRA_A:
             _XRA(_state.a);
             break;
+        case Instruction::XRI:
+            _XRA(opcode.u8operand);
+            _state.pc++;
+            break;
 
         // ORA
         case Instruction::ORA_B:
@@ -837,7 +848,7 @@ namespace i8080
             break;
         case Instruction::ORI:
             _ORA(opcode.u8operand);
-            _state.sp++;
+            _state.pc++;
             break;
 
         // POP
@@ -928,10 +939,17 @@ namespace i8080
 
         // CALL instructions
         case Instruction::CALL:
+            if (opcode.u16operand == 0x06a0)
+            {
+                __debugbreak();
+            }
             _call_if(true, opcode.u16operand);
             break;
         case Instruction::CNZ:
             _call_if(!_state.flags.zero, opcode.u16operand);
+            break;
+        case Instruction::CNC:
+            _call_if(!_state.flags.carry, opcode.u16operand);
             break;
         case Instruction::CPO:
             _call_if(!_state.flags.parity, opcode.u16operand);
@@ -949,7 +967,7 @@ namespace i8080
             _call_if(_state.flags.parity, opcode.u16operand);
             break;
         case Instruction::CM:
-            _call_if(!_state.flags.sign, opcode.u16operand);
+            _call_if(_state.flags.sign, opcode.u16operand);
             break;
 
         // RST
@@ -987,10 +1005,11 @@ namespace i8080
 
         case Instruction::DAA:
         case Instruction::CMA:
-        case Instruction::CMC:
-        case Instruction::XRI:
         default:
-            std::cerr << "Unimplemented instruction " << std::to_string((uint8_t)opcode.instruction) << ", Halting CPU operation.\n";
+            std::cerr << "Unimplemented instruction "
+                      << std::to_string(static_cast<uint8_t>(opcode.instruction))
+                      << ", Halting CPU operation.\n";
+
         case Instruction::HLT:
             _state.halt = true;
             return;
