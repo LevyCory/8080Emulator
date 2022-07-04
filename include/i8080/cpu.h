@@ -11,36 +11,36 @@ namespace i8080
     class Cpu final
     {
 #pragma pack(push, 1)
-        struct Flags
+    struct Flags
+    {
+        union
         {
-            union
+            uint8_t status;
+            struct
             {
-                uint8_t status;
-                struct
-                {
-                    uint8_t carry : 1;
-                    uint8_t reserved1 : 1;
-                    uint8_t parity : 1;
-                    uint8_t reserved2 : 1;
-                    uint8_t aux : 1;
-                    uint8_t reserved3 : 1;
-                    uint8_t zero : 1;
-                    uint8_t sign : 1;
-                };
+                uint8_t carry : 1;
+                uint8_t reserved1 : 1;
+                uint8_t parity : 1;
+                uint8_t reserved2 : 1;
+                uint8_t aux : 1;
+                uint8_t reserved3 : 1;
+                uint8_t zero : 1;
+                uint8_t sign : 1;
             };
         };
+    };
 #pragma pack(pop)
 
 #define DEFINE_REGISTER(high, low)  \
-        union                           \
-        {                               \
-            uint16_t high ## low;       \
-            struct                      \
-            {                           \
-                uint8_t low;            \
-                uint8_t high;           \
-            };                          \
-        }
+    union                           \
+    {                               \
+        uint16_t high ## low;       \
+        struct                      \
+        {                           \
+            uint8_t low;            \
+            uint8_t high;           \
+        };                          \
+    }
 
     public:
         struct State

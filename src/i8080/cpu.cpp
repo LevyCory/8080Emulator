@@ -1,5 +1,6 @@
 #include "cpu.h"
 
+#include <algorithm>
 #include <iostream>
 #include <string>
 
@@ -939,10 +940,6 @@ namespace i8080
 
         // CALL instructions
         case Instruction::CALL:
-            if (opcode.u16operand == 0x06a0)
-            {
-                __debugbreak();
-            }
             _call_if(true, opcode.u16operand);
             break;
         case Instruction::CNZ:
