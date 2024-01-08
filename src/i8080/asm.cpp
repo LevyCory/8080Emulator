@@ -1,8 +1,7 @@
 #include "asm.h"
 
 #include <iostream>
-#include <format>
-#include <iomanip>
+#include <fmt/core.h>
 
 namespace i8080
 {
@@ -23,10 +22,7 @@ namespace i8080
 
     void print_dissassembly(const Opcode& opcode, uint16_t pc)
     {
-        //std::cerr << std::hex << std::setfill('0') << std::setw(4)
-        //          << pc << "    " << DISASSEMBLY[static_cast<uint8_t>(opcode.instruction)];
-
-        std::cerr << std::format("{:#06x}    {}", pc, DISASSEMBLY[static_cast<uint8_t>(opcode.instruction)]);
+        std::cerr << fmt::format("{:#06x}    {}", pc, DISASSEMBLY[static_cast<uint8_t>(opcode.instruction)]);
 
         switch (opcode.instruction)
         {
@@ -56,11 +52,8 @@ namespace i8080
         case Instruction::LXI_D:
         case Instruction::LXI_H:
         case Instruction::LXI_SP:
-            //std::cout << " " << std::hex << opcode.operand << "h";
-            // std::cerr << " " << std::hex << std::setfill('0') << std::setw(4) << opcode.u16operand << "h";
-            std::cerr << std::format(" {:#06x}", opcode.u16operand);
+            std::cerr << fmt::format(" {:#06x}", opcode.u16operand);
             break;
-
         case Instruction::IN:
         case Instruction::OUT:
         case Instruction::ORI:
@@ -79,10 +72,8 @@ namespace i8080
         case Instruction::MVI_L:
         case Instruction::MVI_M:
         case Instruction::MVI_A:
-            // std::cerr << " " << std::setfill('0') << std::setw(4) << std::hex << (opcode.u8operand & 0xff) << "h";
-            std::cerr << std::format(" {:#06x}", (opcode.u8operand & 0xff));
+            std::cerr << fmt::format(" {:#06x}", (opcode.u8operand & 0xff));
             break;
-
         default:
             break;
         }

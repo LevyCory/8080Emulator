@@ -1,8 +1,8 @@
 #include "cpu.h"
 
-#include <algorithm>
+#include <fmt/core.h>
+
 #include <iostream>
-#include <string>
 
 
 namespace i8080
@@ -98,11 +98,10 @@ namespace i8080
         {
             // Subtract one to compensate for pc increment
             _state.pc = address - 1;
+            return;
         }
-        else
-        {
-            _state.pc += 2;
-        }
+
+        _state.pc += 2;
     }
 
     void Cpu::_call_if(bool condition, uint16_t address)
@@ -112,11 +111,10 @@ namespace i8080
             _PUSH(_state.pc + 3);
             _jmp_if(true, address);
             _state.cycle += CONDITION_MET_CYCLE_COUNT;
+            return;
         }
-        else
-        {
-            _state.pc += 2;
-        }
+
+        _state.pc += 2;
     }
 
     // Instructions
@@ -1003,9 +1001,8 @@ namespace i8080
         case Instruction::DAA:
         case Instruction::CMA:
         default:
-            std::cerr << "Unimplemented instruction "
-                      << std::to_string(static_cast<uint8_t>(opcode.instruction))
-                      << ", Halting CPU operation.\n";
+            std::cerr << fmt::format("Unimplemented instruction {}, Halting CPU operation",
+                                     std::to_string(static_cast<uint8_t>(opcode.instruction)));
 
         case Instruction::HLT:
             _state.halt = true;

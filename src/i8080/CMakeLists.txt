@@ -6,7 +6,16 @@ set(SOURCE_DIR ${SOURCE_DIR}/${PROJECT_NAME})
 set(SOURCE_FILES
     ${SOURCE_DIR}/asm.cpp
     ${SOURCE_DIR}/cpu.cpp
-    ${SOURCE_DIR}/bus.cpp)
+    ${SOURCE_DIR}/bus.cpp
+)
 
 add_library(${PROJECT_NAME} ${SOURCE_FILES})
-target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE_DIR})
+target_include_directories(
+    ${PROJECT_NAME} PUBLIC
+    ${INCLUDE_DIR}
+    ${EXTERNALS}/fmt/include
+) 
+target_link_libraries(
+    ${PROJECT_NAME} PRIVATE
+    fmt
+)

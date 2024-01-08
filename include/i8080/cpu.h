@@ -75,11 +75,8 @@ namespace i8080
         static constexpr uint16_t PROGRAM_START_OFFSET = 0x100;
 
         Cpu(Bus& bus);
-        ~Cpu() = default;
         Cpu(const Cpu&) = delete;
         Cpu& operator= (const Cpu&) = delete;
-        Cpu(Cpu&& other) noexcept = default;
-        Cpu& operator= (Cpu&& other) noexcept = default;
 
         void set_debug(bool debug) { _debug = debug; }
         const State& state() const { return _state; }
