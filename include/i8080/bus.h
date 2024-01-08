@@ -15,11 +15,8 @@ namespace i8080
             _memory(memory)
         {}
 
-        ~Bus() = default;
         Bus(const Bus&) = delete;
         Bus& operator= (const Bus&) = delete;
-        Bus(Bus&&) noexcept = default;
-        Bus& operator= (Bus&&) noexcept = default;
         
         const Opcode& fetch(uint16_t pc) const;
 

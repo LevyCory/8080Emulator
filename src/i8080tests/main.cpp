@@ -1,10 +1,10 @@
 
+#include <cstring>
 #include <i8080/device.h>
 #include <i8080/bus.h>
 #include <i8080/cpu.h>
 
 #include <vector>
-#include <numeric>
 #include <fstream>
 #include <iostream>
 #include <filesystem>
@@ -111,7 +111,7 @@ uint64_t run_test(const fs::path& test_rom, buffer& memory, bool debug)
     bus.register_device(0, std::make_shared<TestControlDevice>(test_finished));
     bus.register_device(1, std::make_shared<IODevice>(cpu, memory));
 
-    while (!(test_finished || cpu.halt()))
+    while (!test_finished && !cpu.halt())
     {
         cpu.tick();
     }
@@ -119,11 +119,16 @@ uint64_t run_test(const fs::path& test_rom, buffer& memory, bool debug)
     return cpu.state().cycle;
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+    if (argc != 2) {
+        std::cout << "Usage: i8080tests <test_rom>";
+        return 1;
+    }
+
     buffer memory(MEMORY_NAMESPACE_SIZE);
 
-    run_test(".\\Resources\\test8080.com", memory, true);
+    run_test(argv[1], memory, true);
     return 0;
 }
 
