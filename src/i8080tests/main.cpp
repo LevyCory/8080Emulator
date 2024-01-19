@@ -48,7 +48,7 @@ public:
         switch (byte)
         {
         case PRINT_STATUS_REG_E:
-            std::cout << static_cast<char>(_cpu.state().e);
+            std::cout << fmt::format("{:c}", static_cast<char>(_cpu.state().e));
             break;
         case PRINT_MESSAGE:
             _print_message_in_de();
@@ -67,6 +67,8 @@ private:
         {
             std::cout << _memory[address];
         }
+
+        std::cout << std::endl;
     }
 
     const i8080::Cpu & _cpu;

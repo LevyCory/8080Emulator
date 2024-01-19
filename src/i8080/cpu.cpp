@@ -204,7 +204,7 @@ namespace i8080
     {
         if (_debug)
         {
-            print_dissassembly(opcode, _state.pc + PROGRAM_START_OFFSET);
+            print_dissassembly(opcode, _state.pc);
         }
 
         switch (opcode.instruction)
@@ -455,15 +455,19 @@ namespace i8080
         // LXI
         case Instruction::LXI_B:
             _state.bc = opcode.u16operand;
+            _state.pc += 2;
             break;
         case Instruction::LXI_D:
             _state.de = opcode.u16operand;
+            _state.pc += 2;
             break;
         case Instruction::LXI_H:
             _state.hl = opcode.u16operand;
+            _state.pc += 2;
             break;
         case Instruction::LXI_SP:
             _state.sp = opcode.u16operand;
+            _state.pc += 2;
             break;
 
         // INX
@@ -950,7 +954,7 @@ namespace i8080
             _call_if(!_state.flags.parity, opcode.u16operand);
             break;
         case Instruction::CPE:
-            _call_if(!_state.flags.sign, opcode.u16operand);
+            _call_if(_state.flags.parity, opcode.u16operand);
             break;
         case Instruction::CZ:
             _call_if(_state.flags.zero, opcode.u16operand);
@@ -959,7 +963,7 @@ namespace i8080
             _call_if(_state.flags.carry, opcode.u16operand);
             break;
         case Instruction::CP:
-            _call_if(_state.flags.parity, opcode.u16operand);
+            _call_if(!_state.flags.sign, opcode.u16operand);
             break;
         case Instruction::CM:
             _call_if(_state.flags.sign, opcode.u16operand);
