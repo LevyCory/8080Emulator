@@ -8,13 +8,14 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 #include <vector>
 
 
 namespace fs = std::filesystem;
 using buffer = std::vector<uint8_t>;
 
-static constexpr uint16_t MEMORY_NAMESPACE_SIZE = std::numeric_limits<uint16_t>::max();
+static constexpr uint16_t PROGRAM_START_OFFSET = 0x100;
 
 class TestControlDevice : public i8080::Device
 {
@@ -62,7 +63,6 @@ private:
     void _print_message_in_de()
     {
         uint16_t address = _cpu.state().de;
-
         for (; _memory[address] != '$'; address++)
         {
             std::cout << _memory[address];
@@ -71,7 +71,7 @@ private:
         std::cout << std::endl;
     }
 
-    const i8080::Cpu & _cpu;
+    const i8080::Cpu& _cpu;
     const buffer& _memory;
 };
 
@@ -81,12 +81,12 @@ bool load_binary(const fs::path& path, buffer& memory)
     std::ifstream test_file(path, std::ios::binary);
     if (!test_file.is_open())
     {
-        return false;
+        throw std::runtime_error(fmt::format("Could not open file: {}", path.string()));
     }
 
-    if (test_file.read(reinterpret_cast<char*>(memory.data() + i8080::Cpu::PROGRAM_START_OFFSET), memory.size()))
+    if (test_file.read(reinterpret_cast<char*>(memory.data() + PROGRAM_START_OFFSET), memory.size()))
     {
-        return false;
+        throw std::runtime_error(fmt::format("Could not read file: {}", path.string()));
     }
 
     // Inject "OUT 0" at 0x0000 (signal to stop the test)
@@ -101,16 +101,17 @@ bool load_binary(const fs::path& path, buffer& memory)
     return true;
 }
 
-uint64_t run_test(const fs::path& test_rom, buffer& memory, bool debug)
+uint64_t run_test(const fs::path& test_rom, bool debug)
 {
-    bool test_finished = false;
-
+    buffer memory(i8080::Cpu::NAMESPACE_SIZE);
     load_binary(test_rom, memory);
-    i8080::Bus bus(memory);
 
-    i8080::Cpu cpu(bus);
+    i8080::Bus bus(memory);
+    i8080::Cpu cpu(bus, PROGRAM_START_OFFSET);
+
     cpu.set_debug(debug);
 
+    bool test_finished = false;
     bus.register_device(0, std::make_shared<TestControlDevice>(test_finished));
     bus.register_device(1, std::make_shared<IODevice>(cpu, memory));
 
@@ -124,21 +125,17 @@ uint64_t run_test(const fs::path& test_rom, buffer& memory, bool debug)
 
 int main(int argc, char* argv[])
 {
-    if (argc != 2) {
+    if (argc != 2)
+    {
         std::cout << "Usage: i8080tests <test_rom>" << std::endl;
         return 1;
     }
 
-    buffer memory(MEMORY_NAMESPACE_SIZE);
+    try {
+        run_test(argv[1], false);
+    } catch (...) {
+        return 2;
+    }
 
-    run_test(argv[1], memory, true);
     return 0;
 }
-
-/*
-02d0    CPE 02d9h
-02d3    ADI 0002h
-02d5    RPO
-02c5    CPI 00d9h
-02c7    JZ 032ah
-*/

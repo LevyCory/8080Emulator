@@ -30,7 +30,7 @@ namespace i8080
 
     void Bus::mem_write(uint16_t address, uint8_t byte)
     {
-        _memory.data()[address] = byte;
+        _memory[address] = byte;
     }
 
     void Bus::mem_write(uint16_t address, uint16_t word)
