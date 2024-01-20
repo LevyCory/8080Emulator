@@ -1,9 +1,10 @@
 #include "cpu.h"
+#include "asm.h"
 
 #include <fmt/core.h>
 
+#include <cstdint>
 #include <iostream>
-
 
 namespace i8080
 {
@@ -1017,11 +1018,10 @@ namespace i8080
         {
             _execute({ .instruction = _state.interrupt_vector.value() });
             _state.interrupt_vector.reset();
+            return;
         }
-        else
-        {
-            _state.cycle += cycle(opcode.instruction);
-            _state.pc++;
-        }
+
+        _state.cycle += metadata(opcode.instruction).cycles;
+        _state.pc += metadata(opcode.instruction).size;
     }
 }

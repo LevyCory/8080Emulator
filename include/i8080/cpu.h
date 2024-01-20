@@ -10,7 +10,6 @@ namespace i8080
 {
     class Cpu final
     {
-#pragma pack(push, 1)
     struct Flags
     {
         union
@@ -28,8 +27,7 @@ namespace i8080
                 uint8_t sign : 1;
             };
         };
-    };
-#pragma pack(pop)
+    } __attribute__((packed));
 
 #define DEFINE_REGISTER(high, low)  \
     union                           \

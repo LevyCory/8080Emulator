@@ -5,11 +5,6 @@
 
 namespace i8080
 {
-    uint8_t cycle(Instruction instruction)
-    {
-        return CYCLES[static_cast<uint8_t>(instruction)];
-    }
-
     uint8_t isr_offset(Instruction instruction)
     {
         return (static_cast<uint8_t>(instruction) - static_cast<uint8_t>(Instruction::RST_0));
@@ -22,7 +17,8 @@ namespace i8080
 
     void print_dissassembly(const Opcode& opcode, uint16_t pc)
     {
-        std::cerr << fmt::format("{:#06x}    {}", pc, DISASSEMBLY[static_cast<uint8_t>(opcode.instruction)]);
+        const OpcodeMetadata& _metadata = metadata(opcode.instruction);
+        std::cout << fmt::format("{:#06x}    {}", pc, _metadata.name);
 
         switch (opcode.instruction)
         {
@@ -52,7 +48,7 @@ namespace i8080
         case Instruction::LXI_D:
         case Instruction::LXI_H:
         case Instruction::LXI_SP:
-            std::cerr << fmt::format(" {:#06x}", opcode.u16operand);
+            std::cout << fmt::format(" {:#06x}", opcode.u16operand);
             break;
         case Instruction::IN:
         case Instruction::OUT:
@@ -72,12 +68,17 @@ namespace i8080
         case Instruction::MVI_L:
         case Instruction::MVI_M:
         case Instruction::MVI_A:
-            std::cerr << fmt::format(" {:#06x}", (opcode.u8operand & 0xff));
+            std::cout << fmt::format(" {:#06x}", (opcode.u8operand & 0xff));
             break;
         default:
             break;
         }
 
-        std::cerr << std::endl;
+        std::cout << std::endl;
+    }
+
+    const OpcodeMetadata& metadata(Instruction instruction)
+    {
+        return METADATA[static_cast<uint16_t>(instruction)];
     }
 }
