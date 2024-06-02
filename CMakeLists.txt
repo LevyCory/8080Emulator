@@ -1,17 +1,14 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.22)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project(
-    8080Emulator
+    i8080emu
     VERSION 1.0
     LANGUAGES CXX
 )
 
-
-set(INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
-set(SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
 set(EXTERNALS ${PROJECT_SOURCE_DIR}/externals)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -19,5 +16,5 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_subdirectory(${EXTERNALS}/fmt)
-add_subdirectory(${SOURCE_DIR}/i8080)
-add_subdirectory(${SOURCE_DIR}/i8080tests)
+add_subdirectory(${CMAKE_SOURCE_DIR}/lib8080)
+add_subdirectory(${CMAKE_SOURCE_DIR}/tester)

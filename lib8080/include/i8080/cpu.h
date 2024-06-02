@@ -145,7 +145,7 @@ private:
 
     bool _debug;
 
-    Bus& _bus;
+    std::reference_wrapper<Bus> _bus;
     State _state;
 };
 } // namespace i8080

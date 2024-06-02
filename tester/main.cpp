@@ -26,11 +26,11 @@ public:
 
     void write(uint8_t) override
     {
-        _finished = true;
+        _finished.get() = true;
     }
 
 private:
-    bool& _finished;
+    std::reference_wrapper<bool> _finished;
 };
 
 class IODevice : public i8080::Device
@@ -49,7 +49,7 @@ public:
         switch (byte)
         {
         case PRINT_STATUS_REG_E:
-            std::cout << fmt::format("{:c}", static_cast<char>(_cpu.state().e));
+            std::cout << fmt::format("{:c}", static_cast<char>(_cpu.get().state().e));
             break;
         case PRINT_MESSAGE:
             _print_message_in_de();
@@ -62,17 +62,17 @@ public:
 private:
     void _print_message_in_de()
     {
-        uint16_t address = _cpu.state().de;
-        for (; _memory[address] != '$'; address++)
+        uint16_t address = _cpu.get().state().de;
+        for (; _memory.get()[address] != '$'; address++)
         {
-            std::cout << _memory[address];
+            std::cout << _memory.get()[address];
         }
 
         std::cout << std::endl;
     }
 
-    const i8080::Cpu& _cpu;
-    const buffer& _memory;
+    std::reference_wrapper<const i8080::Cpu> _cpu;
+    std::reference_wrapper<const buffer> _memory;
 };
 
 bool load_binary(const fs::path& path, buffer& memory)
@@ -127,13 +127,14 @@ int main(int argc, char* argv[])
 {
     if (argc != 2)
     {
-        std::cout << "Usage: i8080tests <test_rom>" << std::endl;
+        std::cout << "Usage: tester <test_rom>" << std::endl;
         return 1;
     }
 
     try {
-        run_test(argv[1], false);
-    } catch (...) {
+        run_test(argv[1], true);
+    } catch (const std::exception& e) {
+        std::cerr << fmt::format("Test failed: {}\n", e.what());
         return 2;
     }
 

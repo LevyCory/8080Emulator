@@ -19,6 +19,7 @@ namespace i8080
         const uint8_t cycles;
     };
 
+    // NOLINTBEGIN
     enum class Instruction : uint8_t
     {
         NOP = 0x00, LXI_B, STAX_B, INX_B, INR_B, DCR_B, MVI_B, RLC, NOP1,
@@ -54,8 +55,9 @@ namespace i8080
         POP_PSW, JP, DI, CP, PUSH_PSW, ORI, RST_6, RM,
         SPHL, JM, EI, CM, NOP10, CPI, RST_7,
     }; 
+    // NOLINTEND
 
-    static std::array<OpcodeMetadata, 256> METADATA = {
+    static const std::array<OpcodeMetadata, 256> METADATA = {
         OpcodeMetadata{"NOP", 1, 4},
         {"LXI B,", 3, 10},
         {"STAX B", 1, 7},

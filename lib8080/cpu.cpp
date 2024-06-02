@@ -26,7 +26,7 @@ namespace i8080
 
     void Cpu::tick()
     {
-         _execute(_bus.fetch(_state.pc)); 
+         _execute(_bus.get().fetch(_state.pc)); 
     }
 
     void Cpu::interrupt(Instruction instruction)
@@ -168,12 +168,12 @@ namespace i8080
     void Cpu::_PUSH(uint16_t reg)
     {
         _state.sp -= 2;
-        _bus.mem_write(_state.sp, reg);
+        _bus.get().mem_write(_state.sp, reg);
     }
 
     void Cpu::_POP(uint16_t& reg)
     {
-        _bus.mem_read(_state.sp, reg);
+        _bus.get().mem_read(_state.sp, reg);
         _state.sp += 2;
     }
 
@@ -222,22 +222,22 @@ namespace i8080
         switch (opcode.instruction)
         {
         case Instruction::OUT:
-            _bus.write(opcode.u8operand, _state.c);
+            _bus.get().write(opcode.u8operand, _state.c);
             break;
         case Instruction::IN:
-            _bus.read(opcode.u8operand, _state.c);
+            _bus.get().read(opcode.u8operand, _state.c);
             break;
         case Instruction::SHLD:
-            _bus.mem_write(_state.hl, opcode.u16operand);
+            _bus.get().mem_write(_state.hl, opcode.u16operand);
             break;
         case Instruction::LHLD:
-            _bus.mem_read(opcode.u16operand, _state.hl);
+            _bus.get().mem_read(opcode.u16operand, _state.hl);
             break;
         case Instruction::STA:
-            _bus.mem_write(opcode.u16operand, _state.a);
+            _bus.get().mem_write(opcode.u16operand, _state.a);
             break;
         case Instruction::LDA:
-            _bus.mem_read(opcode.u16operand, _state.a);
+            _bus.get().mem_read(opcode.u16operand, _state.a);
             break;
         case Instruction::STC:
             _state.flags.carry = 1;
@@ -254,8 +254,8 @@ namespace i8080
         case Instruction::XTHL:
         {
             uint16_t current_hl = _state.hl;
-            _bus.mem_read(_state.sp, _state.hl);
-            _bus.mem_write(_state.sp, current_hl);
+            _bus.get().mem_read(_state.sp, _state.hl);
+            _bus.get().mem_write(_state.sp, current_hl);
         }
         break;
         case Instruction::PCHL:
@@ -317,7 +317,7 @@ namespace i8080
             _state.b = _state.l;
             break;
         case Instruction::MOV_B_M:
-            _bus.mem_read(_state.hl, _state.b);
+            _bus.get().mem_read(_state.hl, _state.b);
             break;
         case Instruction::MOV_B_A:
             _state.b = _state.a;
@@ -338,7 +338,7 @@ namespace i8080
             _state.c = _state.l;
             break;
         case Instruction::MOV_C_M:
-            _bus.mem_read(_state.hl, _state.c);
+            _bus.get().mem_read(_state.hl, _state.c);
             break;
         case Instruction::MOV_C_A:
             _state.c = _state.a;
@@ -359,7 +359,7 @@ namespace i8080
             _state.d = _state.l;
             break;
         case Instruction::MOV_D_M:
-            _bus.mem_read(_state.hl, _state.d);
+            _bus.get().mem_read(_state.hl, _state.d);
             break;
         case Instruction::MOV_D_A:
             _state.d = _state.a;
@@ -380,7 +380,7 @@ namespace i8080
             _state.e = _state.l;
             break;
         case Instruction::MOV_E_M:
-            _bus.mem_read(_state.hl, _state.e);
+            _bus.get().mem_read(_state.hl, _state.e);
             break;
         case Instruction::MOV_E_A:
             _state.e = _state.a;
@@ -401,7 +401,7 @@ namespace i8080
             _state.h = _state.l;
             break;
         case Instruction::MOV_H_M:
-            _bus.mem_read(_state.hl, _state.h);
+            _bus.get().mem_read(_state.hl, _state.h);
             break;
         case Instruction::MOV_H_A:
             _state.h = _state.a;
@@ -422,31 +422,31 @@ namespace i8080
             _state.l = _state.h;
             break;
         case Instruction::MOV_L_M:
-            _bus.mem_read(_state.hl, _state.l);
+            _bus.get().mem_read(_state.hl, _state.l);
             break;
         case Instruction::MOV_L_A:
             _state.l = _state.a;
             break;
         case Instruction::MOV_M_B:
-            _bus.mem_write(_state.hl, _state.b);
+            _bus.get().mem_write(_state.hl, _state.b);
             break;
         case Instruction::MOV_M_C:
-            _bus.mem_write(_state.hl, _state.c);
+            _bus.get().mem_write(_state.hl, _state.c);
             break;
         case Instruction::MOV_M_D:
-            _bus.mem_write(_state.hl, _state.d);
+            _bus.get().mem_write(_state.hl, _state.d);
             break;
         case Instruction::MOV_M_E:
-            _bus.mem_write(_state.hl, _state.e);
+            _bus.get().mem_write(_state.hl, _state.e);
             break;
         case Instruction::MOV_M_H:
-            _bus.mem_write(_state.hl, _state.h);
+            _bus.get().mem_write(_state.hl, _state.h);
             break;
         case Instruction::MOV_M_L:
-            _bus.mem_write(_state.hl, _state.l);
+            _bus.get().mem_write(_state.hl, _state.l);
             break;
         case Instruction::MOV_M_A:
-            _bus.mem_write(_state.hl, _state.a);
+            _bus.get().mem_write(_state.hl, _state.a);
             break;
         case Instruction::MOV_A_B:
             _state.a = _state.b;
@@ -467,7 +467,7 @@ namespace i8080
             _state.a = _state.a;
             break;
         case Instruction::MOV_A_M:
-            _bus.mem_read(_state.hl, _state.a);
+            _bus.get().mem_read(_state.hl, _state.a);
             break;
 
         // LXI
@@ -514,18 +514,18 @@ namespace i8080
 
         // STAX
         case Instruction::STAX_B:
-            _bus.mem_write(_state.bc, _state.a);
+            _bus.get().mem_write(_state.bc, _state.a);
             break;
         case Instruction::STAX_D:
-            _bus.mem_write(_state.de, _state.a);
+            _bus.get().mem_write(_state.de, _state.a);
             break;
 
         // LDAX
         case Instruction::LDAX_B:
-            _bus.mem_read(_state.bc, _state.a);
+            _bus.get().mem_read(_state.bc, _state.a);
             break;
         case Instruction::LDAX_D:
-            _bus.mem_read(_state.de, _state.a);
+            _bus.get().mem_read(_state.de, _state.a);
             break;
 
         // DAD
@@ -553,7 +553,7 @@ namespace i8080
             _INR(_state.h);
             break;
         case Instruction::INR_M:
-            _INR(_bus.mem_read_u8_ref(_state.hl));
+            _INR(_bus.get().mem_read_u8_ref(_state.hl));
             break;
         case Instruction::INR_C:
             _INR(_state.c);
@@ -579,7 +579,7 @@ namespace i8080
             _DCR(_state.h);
             break;
         case Instruction::DCR_M:
-            _DCR(_bus.mem_read_u8_ref(_state.hl));
+            _DCR(_bus.get().mem_read_u8_ref(_state.hl));
             break;
         case Instruction::DCR_C:
             _DCR(_state.c);
@@ -614,7 +614,7 @@ namespace i8080
             _state.l = opcode.u8operand;
             break;
         case Instruction::MVI_M:
-            _bus.mem_write(_state.hl, opcode.u8operand);
+            _bus.get().mem_write(_state.hl, opcode.u8operand);
             break;
         case Instruction::MVI_A:
             _state.a = opcode.u8operand;
@@ -640,7 +640,7 @@ namespace i8080
             _ADD(_state.l);
             break;
         case Instruction::ADD_M:
-            _ADD(_bus.mem_read_u8_ref(_state.hl));
+            _ADD(_bus.get().mem_read_u8_ref(_state.hl));
             break;
         case Instruction::ADD_A:
             _ADD(_state.a);
@@ -669,7 +669,7 @@ namespace i8080
             _ADC(_state.l);
             break;
         case Instruction::ADC_M:
-            _ADC(_bus.mem_read_u8_ref(_state.hl));
+            _ADC(_bus.get().mem_read_u8_ref(_state.hl));
             break;
         case Instruction::ADC_A:
             _ADC(_state.a);
@@ -698,7 +698,7 @@ namespace i8080
             _SUB(_state.l);
             break;
         case Instruction::SUB_M:
-            _SUB(_bus.mem_read_u8_ref(_state.hl));
+            _SUB(_bus.get().mem_read_u8_ref(_state.hl));
             break;
         case Instruction::SUB_A:
             _SUB(_state.a);
@@ -723,7 +723,7 @@ namespace i8080
             _CMP(_state.l);
             break;
         case Instruction::CMP_M:
-            _CMP(_bus.mem_read_u8_ref(_state.hl));
+            _CMP(_bus.get().mem_read_u8_ref(_state.hl));
             break;
         case Instruction::CMP_A:
             _CMP(_state.a);
@@ -756,7 +756,7 @@ namespace i8080
             _SBB(_state.l);
             break;
         case Instruction::SBB_M:
-            _SBB(_bus.mem_read_u8_ref(_state.hl));
+            _SBB(_bus.get().mem_read_u8_ref(_state.hl));
             break;
         case Instruction::SBB_A:
             _SBB(_state.a);
@@ -785,7 +785,7 @@ namespace i8080
             _ANA(_state.l);
             break;
         case Instruction::ANA_M:
-            _ANA(_bus.mem_read_u8_ref(_state.hl));
+            _ANA(_bus.get().mem_read_u8_ref(_state.hl));
             break;
         case Instruction::ANA_A:
             _ANA(_state.a);
@@ -814,7 +814,7 @@ namespace i8080
             _XRA(_state.l);
             break;
         case Instruction::XRA_M:
-            _XRA(_bus.mem_read_u8_ref(_state.hl));
+            _XRA(_bus.get().mem_read_u8_ref(_state.hl));
             break;
         case Instruction::XRA_A:
             _XRA(_state.a);
@@ -843,7 +843,7 @@ namespace i8080
             _ORA(_state.l);
             break;
         case Instruction::ORA_M:
-            _ORA(_bus.mem_read_u8_ref(_state.hl));
+            _ORA(_bus.get().mem_read_u8_ref(_state.hl));
             break;
         case Instruction::ORA_A:
             _ORA(_state.a);
@@ -1009,9 +1009,9 @@ namespace i8080
             return;
         }
 
-        if (_state.interrupts_enabled && _state.interrupt_vector.has_value())
+        if (_state.interrupts_enabled && _state.interrupt_vector)
         {
-            _execute({ .instruction = _state.interrupt_vector.value() });
+            _execute({ .instruction = *_state.interrupt_vector });
             _state.interrupt_vector.reset();
             return;
         }

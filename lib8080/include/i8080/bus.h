@@ -32,7 +32,7 @@ namespace i8080
         uint8_t& mem_read_u8_ref(uint16_t address);
 
     private:
-        buffer& _memory;
+        std::reference_wrapper<buffer>_memory;
         std::array<Device::sptr, 8> _devices;
     };
 }
