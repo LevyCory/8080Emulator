@@ -24,8 +24,7 @@ void print_dissassembly(const Opcode& opcode, uint16_t pc)
     const OpcodeMetadata& metadata = get_opcode_metadata(opcode.instruction);
     std::cout << fmt::format("{:#06x}    {}", pc, metadata.name);
 
-    switch (metadata.size)
-    {
+    switch (metadata.size) {
     case WORD_OPERAND:
         std::cout << fmt::format(" {:#06x}", opcode.u16operand);
         break;

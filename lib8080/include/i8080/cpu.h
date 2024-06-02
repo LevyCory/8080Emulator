@@ -75,7 +75,6 @@ public:
 #undef DEFINE_REGISTER
 
 public:
-
     Cpu(Bus& bus, uint16_t entry_point);
     Cpu(const Cpu&) = delete;
     Cpu& operator=(const Cpu&) = delete;
@@ -99,13 +98,14 @@ private:
     void _execute(const Opcode& opcode);
 
     static bool _is_zero(uint8_t number) { return number == 0; }
+
     static bool _is_signed(uint16_t number) { return (number & 0x80) != 0; }
+
     static bool _is_carry(uint16_t number) { return number > 0xff; }
+
     static bool _is_carry(uint32_t number) { return number > 0xffff; }
-    static bool _is_carry(uint8_t number)
-    {
-        return _is_carry(static_cast<uint16_t>(number));
-    }
+
+    static bool _is_carry(uint8_t number) { return _is_carry(static_cast<uint16_t>(number)); }
 
     // Instructions
     template <typename T>
@@ -145,7 +145,7 @@ private:
 
     bool _debug;
 
-    Bus& _bus;
+    std::reference_wrapper<Bus> _bus;
     State _state;
 };
 } // namespace i8080

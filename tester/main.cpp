@@ -1,6 +1,6 @@
-#include <i8080/device.h>
 #include <i8080/bus.h>
 #include <i8080/cpu.h>
+#include <i8080/device.h>
 
 #include <fmt/core.h>
 
@@ -10,7 +10,6 @@
 #include <iostream>
 #include <stdexcept>
 #include <vector>
-
 
 namespace fs = std::filesystem;
 using buffer = std::vector<uint8_t>;
@@ -24,13 +23,10 @@ public:
         _finished(finished)
     {}
 
-    void write(uint8_t) override
-    {
-        _finished = true;
-    }
+    void write(uint8_t) override { _finished.get() = true; }
 
 private:
-    bool& _finished;
+    std::reference_wrapper<bool> _finished;
 };
 
 class IODevice : public i8080::Device
@@ -46,10 +42,9 @@ public:
 
     void write(uint8_t byte) override
     {
-        switch (byte)
-        {
+        switch (byte) {
         case PRINT_STATUS_REG_E:
-            std::cout << fmt::format("{:c}", static_cast<char>(_cpu.state().e));
+            std::cout << fmt::format("{:c}", static_cast<char>(_cpu.get().state().e));
             break;
         case PRINT_MESSAGE:
             _print_message_in_de();
@@ -62,41 +57,39 @@ public:
 private:
     void _print_message_in_de()
     {
-        uint16_t address = _cpu.state().de;
-        for (; _memory[address] != '$'; address++)
-        {
-            std::cout << _memory[address];
+        uint16_t address = _cpu.get().state().de;
+        for (; _memory.get()[address] != '$'; address++) {
+            std::cout << _memory.get()[address];
         }
 
         std::cout << std::endl;
     }
 
-    const i8080::Cpu& _cpu;
-    const buffer& _memory;
+    std::reference_wrapper<const i8080::Cpu> _cpu;
+    std::reference_wrapper<const buffer> _memory;
 };
 
 bool load_binary(const fs::path& path, buffer& memory)
 {
     std::memset(memory.data(), 0, memory.capacity());
     std::ifstream test_file(path, std::ios::binary);
-    if (!test_file.is_open())
-    {
+    if (!test_file.is_open()) {
         throw std::runtime_error(fmt::format("Could not open file: {}", path.string()));
     }
 
-    if (test_file.read(reinterpret_cast<char*>(memory.data() + PROGRAM_START_OFFSET), memory.size()))
-    {
+    if (test_file.read(reinterpret_cast<char*>(memory.data() + PROGRAM_START_OFFSET),
+                       memory.size())) {
         throw std::runtime_error(fmt::format("Could not read file: {}", path.string()));
     }
 
-    // Inject "OUT 0" at 0x0000 (signal to stop the test)
-    memory[0x0000] = 0xD3;
-    memory[0x0001] = 0x00;
+    // Inject "OUT 0" at 0 (stop test)
+    memory[0] = 0xD3;
+    memory[1] = 0x00;
 
-    // Inject "OUT 1" at 0x0005 (signal to output some characters)
-    memory[0x0005] = 0xD3;
-    memory[0x0006] = 0x01;
-    memory[0x0007] = 0xC9;
+    // Inject "OUT 1" at 5 (print characters)
+    memory[5] = 0xD3;
+    memory[6] = 0x01;
+    memory[7] = 0xC9;
 
     return true;
 }
@@ -115,8 +108,7 @@ uint64_t run_test(const fs::path& test_rom, bool debug)
     bus.register_device(0, std::make_shared<TestControlDevice>(test_finished));
     bus.register_device(1, std::make_shared<IODevice>(cpu, memory));
 
-    while (!test_finished && !cpu.halt())
-    {
+    while (!test_finished && !cpu.halt()) {
         cpu.tick();
     }
 
@@ -125,15 +117,15 @@ uint64_t run_test(const fs::path& test_rom, bool debug)
 
 int main(int argc, char* argv[])
 {
-    if (argc != 2)
-    {
-        std::cout << "Usage: i8080tests <test_rom>" << std::endl;
+    if (argc != 2) {
+        std::cout << "Usage: tester <test_rom>" << std::endl;
         return 1;
     }
 
     try {
-        run_test(argv[1], false);
-    } catch (...) {
+        run_test(argv[1], true);
+    } catch (const std::exception& e) {
+        std::cerr << fmt::format("Test failed: {}\n", e.what());
         return 2;
     }
 
