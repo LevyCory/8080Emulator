@@ -44,7 +44,7 @@ public:
     {
         switch (byte) {
         case PRINT_STATUS_REG_E:
-            std::cout << fmt::format("{:c}", static_cast<char>(_cpu.get().state().e));
+            fmt::print("{:c}", static_cast<char>(_cpu.get().state().e));
             break;
         case PRINT_MESSAGE:
             _print_message_in_de();
@@ -94,7 +94,7 @@ bool load_binary(const fs::path& path, buffer& memory)
     return true;
 }
 
-uint64_t run_test(const fs::path& test_rom, bool debug)
+static uint64_t run_test(const fs::path& test_rom, bool debug)
 {
     buffer memory(i8080::Cpu::NAMESPACE_SIZE);
     load_binary(test_rom, memory);
@@ -118,14 +118,14 @@ uint64_t run_test(const fs::path& test_rom, bool debug)
 int main(int argc, char* argv[])
 {
     if (argc != 2) {
-        std::cout << "Usage: tester <test_rom>" << std::endl;
+        fmt::println("Usage: tester <test_rom>");
         return 1;
     }
 
     try {
-        run_test(argv[1], true);
+        fmt::println("\nCPU ran {} cycles", run_test(argv[1], false));
     } catch (const std::exception& e) {
-        std::cerr << fmt::format("Test failed: {}\n", e.what());
+        fmt::println("Test failed: {}\n", e.what());
         return 2;
     }
 

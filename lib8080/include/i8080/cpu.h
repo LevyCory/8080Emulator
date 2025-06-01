@@ -15,7 +15,6 @@ class Cpu final
         union
         {
             uint8_t status;
-
             struct
             {
                 uint8_t carry : 1;
@@ -49,7 +48,6 @@ public:
         union
         {
             uint16_t af;
-
             struct
             {
                 uint8_t a;

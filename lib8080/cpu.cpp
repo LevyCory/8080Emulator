@@ -1,8 +1,9 @@
 #include "cpu.h"
 #include "asm.h"
 
+#include <fmt/format.h>
+
 #include <cstdint>
-#include <iostream>
 
 namespace i8080
 {
@@ -148,7 +149,6 @@ void Cpu::_INR(uint8_t& reg)
 
 void Cpu::_DCR(uint8_t& reg)
 {
-
     reg--;
     _set_zero_parity_sign(reg);
     _state.flags.aux = (((_state.a & 0xf) + (reg & 0xf)) > 0xf);
@@ -988,7 +988,7 @@ void Cpu::_execute(const Opcode& opcode)
         break;
 
     default:
-        std::cout << "Unknown Error: Stopping CPU Operation";
+        fmt::println("Unknown Error: Stopping CPU Operation");
 
     case Instruction::HLT:
         _state.halt = true;
